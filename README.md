@@ -48,6 +48,8 @@ Every content file is one **chapter** with a stable ID (e.g. `rag-05`), YAML fro
 
 Opens a local reader UI (`tutor/reader.html`) with a grouped sidebar, full-text search across every file, working cross-links, rendered Mermaid diagrams, and a per-page table of contents. It renders the same `.md` files you see in the repo — nothing is duplicated, so the Markdown stays the single source of truth. Needs a local server (browsers block `file://` fetches); `read.sh` starts one on `:8123` and opens the page.
 
+To publish it as a website, see [DEPLOY.md](DEPLOY.md) — the repo is GitHub Pages ready.
+
 ## How to navigate
 
 1. **Start at [curriculum/roadmap.md](curriculum/roadmap.md).** It lists every chapter with objectives, prerequisites, hours, and difficulty.

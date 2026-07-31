@@ -2,6 +2,13 @@
 
 Repo-level change history. CalVer tags per CONVENTIONS §6.
 
+## 2026-07-10 — reader made GitHub Pages deployable
+
+- Added `.nojekyll` (critical — Jekyll would otherwise convert the frontmatter-carrying `.md` files to HTML and break every fetch), root `index.html` redirect, and `tutor/build-index.py` → `tutor/files.json` (one request replaces ~100 HEAD probes; load went from ~105 requests to 5).
+- Mobile verified at 375px: no horizontal overflow, drawer nav, tables/diagrams scroll internally; topbar tightened and pager stacked on narrow screens.
+- Verified against a simulated subpath deploy (`/repo-name/`): root redirect, 102 nav items, chapters and Mermaid render, 0 failed requests.
+- Repo initialized and committed. Push + Pages enablement need GitHub credentials — see `DEPLOY.md`.
+
 ## 2026-07-10 — local reader UI
 
 - Added `tutor/reader.html` (single self-contained file) + `read.sh` launcher: a zero-build local UI for reading the whole corpus without juggling `.md` files. Renders the existing Markdown live — **no content is duplicated or rewritten**; the reader is a view, the `.md` files remain the only source of truth.
