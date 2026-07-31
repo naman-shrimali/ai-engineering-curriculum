@@ -1,0 +1,511 @@
+# manifest.yaml — machine-readable build spec for the AI Engineering curriculum.
+# Consumed by the Days 2–4 content-generation pipeline and by CI validation.
+#
+# Contract:
+#   - `chapters` is in BUILD ORDER: a topological sort of the prerequisite DAG.
+#     Generating top-to-bottom guarantees every prerequisite chapter exists
+#     before its dependents are written.
+#   - `status` is the INITIAL status to stamp into each file's frontmatter,
+#     derived from subject volatility: evergreen→stable, mixed/volatile→evolving,
+#     frontier topics→experimental. It may drift afterwards; frontmatter is then
+#     source of truth and the manifest is updated to match (CI enforces equality).
+#   - `build_day` groups chapters into the Day 2–4 generation batches.
+#   - IDs are immutable and never reused. Deprecated chapters stay listed with
+#     status: deprecated.
+
+spec_version: 3   # v3 (2026-07-10): tutor/ query layer added; see CHANGELOG.md
+generated: 2026-07-08
+total_chapters: 61
+
+chapters:
+  # ── Day 2: foundations + APIs + eval mindset ──────────────────────────────
+  - id: fnd-01
+    path: modules/01-foundations/fnd-01-ai-engineering-landscape.md
+    module: foundations
+    prerequisites: []
+    status: evolving
+    build_day: 2
+  - id: fnd-02
+    path: modules/01-foundations/fnd-02-ml-refresher.md
+    module: foundations
+    prerequisites: []
+    status: stable
+    build_day: 2
+  - id: fnd-03
+    path: modules/01-foundations/fnd-03-embeddings.md
+    module: foundations
+    prerequisites: [fnd-02]
+    status: stable
+    build_day: 2
+  - id: fnd-04
+    path: modules/01-foundations/fnd-04-tokenization.md
+    module: foundations
+    prerequisites: [fnd-02]
+    status: stable
+    build_day: 2
+  - id: fnd-05
+    path: modules/01-foundations/fnd-05-transformer-architecture.md
+    module: foundations
+    prerequisites: [fnd-03, fnd-04]
+    status: stable
+    build_day: 2
+  - id: fnd-06
+    path: modules/01-foundations/fnd-06-llm-pretraining.md
+    module: foundations
+    prerequisites: [fnd-05]
+    status: stable
+    build_day: 2
+  - id: fnd-07
+    path: modules/01-foundations/fnd-07-post-training.md
+    module: foundations
+    prerequisites: [fnd-06]
+    status: evolving
+    build_day: 2
+  - id: fnd-08
+    path: modules/01-foundations/fnd-08-sampling-and-decoding.md
+    module: foundations
+    prerequisites: [fnd-05]
+    status: stable
+    build_day: 2
+  - id: fnd-09
+    path: modules/01-foundations/fnd-09-capabilities-and-limits.md
+    module: foundations
+    prerequisites: [fnd-06, fnd-08]
+    status: evolving
+    build_day: 2
+  - id: api-01
+    path: modules/02-llm-apis/api-01-llm-api-fundamentals.md
+    module: llm-apis
+    prerequisites: [fnd-01]
+    status: evolving
+    build_day: 2
+  - id: api-02
+    path: modules/02-llm-apis/api-02-prompt-engineering.md
+    module: llm-apis
+    prerequisites: [api-01, fnd-08]
+    status: evolving
+    build_day: 2
+  - id: api-03
+    path: modules/02-llm-apis/api-03-structured-outputs-tool-calling.md
+    module: llm-apis
+    prerequisites: [api-02]
+    status: evolving
+    build_day: 2
+  - id: api-04
+    path: modules/02-llm-apis/api-04-multimodal.md
+    module: llm-apis
+    prerequisites: [api-01]
+    status: evolving
+    build_day: 2
+  - id: api-05
+    path: modules/02-llm-apis/api-05-streaming-caching-batch.md
+    module: llm-apis
+    prerequisites: [api-01]
+    status: evolving
+    build_day: 2
+  - id: api-06
+    path: modules/02-llm-apis/api-06-model-selection.md
+    module: llm-apis
+    prerequisites: [api-01, fnd-09]
+    status: evolving
+    build_day: 2
+  - id: api-07
+    path: modules/02-llm-apis/api-07-local-inference.md
+    module: llm-apis
+    prerequisites: [api-01, fnd-05]
+    status: evolving
+    build_day: 2
+  - id: evl-01
+    path: modules/05-evaluation/evl-01-evaluation-fundamentals.md
+    module: evaluation
+    prerequisites: [api-02]
+    status: stable
+    build_day: 2
+  - id: fro-04
+    path: modules/09-frontier/fro-04-staying-current.md
+    module: frontier
+    prerequisites: [fnd-01]
+    status: evolving
+    build_day: 2
+
+  # ── Day 3: retrieval + evaluation + agents ────────────────────────────────
+  - id: rag-01
+    path: modules/03-retrieval/rag-01-context-engineering.md
+    module: retrieval
+    prerequisites: [api-02, fnd-04]
+    status: evolving
+    build_day: 3
+  - id: rag-02
+    path: modules/03-retrieval/rag-02-vector-search.md
+    module: retrieval
+    prerequisites: [fnd-03]
+    status: stable
+    build_day: 3
+  - id: rag-03
+    path: modules/03-retrieval/rag-03-vector-databases.md
+    module: retrieval
+    prerequisites: [rag-02]
+    status: evolving
+    build_day: 3
+  - id: rag-04
+    path: modules/03-retrieval/rag-04-chunking.md
+    module: retrieval
+    prerequisites: [rag-01]
+    status: evolving
+    build_day: 3
+  - id: rag-05
+    path: modules/03-retrieval/rag-05-rag-pipeline.md
+    module: retrieval
+    prerequisites: [rag-03, rag-04]
+    status: evolving
+    build_day: 3
+  - id: rag-06
+    path: modules/03-retrieval/rag-06-advanced-retrieval.md
+    module: retrieval
+    prerequisites: [rag-05]
+    status: evolving
+    build_day: 3
+  - id: rag-07
+    path: modules/03-retrieval/rag-07-rag-evaluation.md
+    module: retrieval
+    prerequisites: [rag-05, evl-01]
+    status: evolving
+    build_day: 3
+  - id: rag-08
+    path: modules/03-retrieval/rag-08-rag-frontiers.md
+    module: retrieval
+    prerequisites: [rag-06]
+    status: experimental
+    build_day: 3
+  - id: evl-02
+    path: modules/05-evaluation/evl-02-eval-datasets.md
+    module: evaluation
+    prerequisites: [evl-01]
+    status: evolving
+    build_day: 3
+  - id: evl-03
+    path: modules/05-evaluation/evl-03-llm-as-judge.md
+    module: evaluation
+    prerequisites: [evl-01, api-03]
+    status: evolving
+    build_day: 3
+  - id: evl-04
+    path: modules/05-evaluation/evl-04-tracing-observability.md
+    module: evaluation
+    prerequisites: [evl-01, api-01]
+    status: evolving
+    build_day: 3
+  - id: evl-05
+    path: modules/05-evaluation/evl-05-online-evaluation.md
+    module: evaluation
+    prerequisites: [evl-02, evl-04]
+    status: evolving
+    build_day: 3
+  - id: evl-06
+    path: modules/05-evaluation/evl-06-ci-for-llm-apps.md
+    module: evaluation
+    prerequisites: [evl-02, evl-03]
+    status: evolving
+    build_day: 3
+  - id: agt-01
+    path: modules/04-agents/agt-01-agent-fundamentals.md
+    module: agents
+    prerequisites: [api-03]
+    status: evolving
+    build_day: 3
+  - id: agt-02
+    path: modules/04-agents/agt-02-tool-design.md
+    module: agents
+    prerequisites: [agt-01]
+    status: evolving
+    build_day: 3
+  - id: agt-03
+    path: modules/04-agents/agt-03-reasoning-and-planning.md
+    module: agents
+    prerequisites: [agt-01, fnd-07]
+    status: evolving
+    build_day: 3
+  - id: agt-04
+    path: modules/04-agents/agt-04-memory-and-state.md
+    module: agents
+    prerequisites: [agt-01, rag-01]
+    status: evolving
+    build_day: 3
+  - id: agt-05
+    path: modules/04-agents/agt-05-mcp.md
+    module: agents
+    prerequisites: [agt-02]
+    status: evolving
+    build_day: 3
+  - id: agt-06
+    path: modules/04-agents/agt-06-multi-agent-systems.md
+    module: agents
+    prerequisites: [agt-04]
+    status: evolving
+    build_day: 3
+  - id: agt-07
+    path: modules/04-agents/agt-07-agent-frameworks.md
+    module: agents
+    prerequisites: [agt-01]
+    status: evolving
+    build_day: 3
+  - id: agt-08
+    path: modules/04-agents/agt-08-computer-use.md
+    module: agents
+    prerequisites: [agt-02, api-04]
+    status: experimental
+    build_day: 3
+  - id: agt-09
+    path: modules/04-agents/agt-09-agent-reliability.md
+    module: agents
+    prerequisites: [agt-01, evl-03]
+    status: evolving
+    build_day: 3
+
+  # ── Day 4: production + safety + fine-tuning + frontier ───────────────────
+  - id: prd-01
+    path: modules/06-production/prd-01-architecture-patterns.md
+    module: production
+    prerequisites: [api-05, rag-05]
+    status: evolving
+    build_day: 4
+  - id: prd-02
+    path: modules/06-production/prd-02-inference-and-serving.md
+    module: production
+    prerequisites: [fnd-05, api-07]
+    status: evolving
+    build_day: 4
+  - id: prd-03
+    path: modules/06-production/prd-03-inference-optimization.md
+    module: production
+    prerequisites: [prd-02]
+    status: evolving
+    build_day: 4
+  - id: prd-04
+    path: modules/06-production/prd-04-reliability.md
+    module: production
+    prerequisites: [api-05, evl-04]
+    status: evolving
+    build_day: 4
+  - id: prd-05
+    path: modules/06-production/prd-05-cost-engineering.md
+    module: production
+    prerequisites: [api-06, prd-01]
+    status: evolving
+    build_day: 4
+  - id: prd-06
+    path: modules/06-production/prd-06-deployment-infrastructure.md
+    module: production
+    prerequisites: [prd-02]
+    status: evolving
+    build_day: 4
+  - id: sec-01
+    path: modules/07-safety-security/sec-01-prompt-injection.md
+    module: safety-security
+    prerequisites: [agt-01, rag-05]
+    status: evolving
+    build_day: 4
+  - id: sec-02
+    path: modules/07-safety-security/sec-02-guardrails.md
+    module: safety-security
+    prerequisites: [sec-01]
+    status: evolving
+    build_day: 4
+  - id: sec-03
+    path: modules/07-safety-security/sec-03-privacy-compliance.md
+    module: safety-security
+    prerequisites: [api-01]
+    status: evolving
+    build_day: 4
+  - id: sec-04
+    path: modules/07-safety-security/sec-04-red-teaming.md
+    module: safety-security
+    prerequisites: [sec-01, evl-02]
+    status: evolving
+    build_day: 4
+  - id: sec-05
+    path: modules/07-safety-security/sec-05-alignment-for-engineers.md
+    module: safety-security
+    prerequisites: [fnd-07]
+    status: stable
+    build_day: 4
+  - id: ftn-01
+    path: modules/08-fine-tuning/ftn-01-customization-decision.md
+    module: fine-tuning
+    prerequisites: [api-02, rag-05]
+    status: evolving
+    build_day: 4
+  - id: ftn-02
+    path: modules/08-fine-tuning/ftn-02-fine-tuning-methods.md
+    module: fine-tuning
+    prerequisites: [fnd-05, ftn-01]
+    status: evolving
+    build_day: 4
+  - id: ftn-03
+    path: modules/08-fine-tuning/ftn-03-data-for-fine-tuning.md
+    module: fine-tuning
+    prerequisites: [ftn-01, evl-02]
+    status: evolving
+    build_day: 4
+  - id: ftn-04
+    path: modules/08-fine-tuning/ftn-04-fine-tuning-in-practice.md
+    module: fine-tuning
+    prerequisites: [ftn-02, ftn-03]
+    status: evolving
+    build_day: 4
+  - id: ftn-05
+    path: modules/08-fine-tuning/ftn-05-preference-optimization.md
+    module: fine-tuning
+    prerequisites: [fnd-07, ftn-02]
+    status: evolving
+    build_day: 4
+  - id: ftn-06
+    path: modules/08-fine-tuning/ftn-06-distillation-and-slms.md
+    module: fine-tuning
+    prerequisites: [ftn-02, api-06]
+    status: evolving
+    build_day: 4
+  - id: fro-01
+    path: modules/09-frontier/fro-01-voice-realtime.md
+    module: frontier
+    prerequisites: [api-04, api-05]
+    status: experimental
+    build_day: 4
+  - id: fro-02
+    path: modules/09-frontier/fro-02-generative-media.md
+    module: frontier
+    prerequisites: [api-04]
+    status: experimental
+    build_day: 4
+  - id: fro-03
+    path: modules/09-frontier/fro-03-edge-on-device.md
+    module: frontier
+    prerequisites: [api-07, ftn-06]
+    status: experimental
+    build_day: 4
+  - id: fro-05
+    path: modules/09-frontier/fro-05-interviews-portfolio.md
+    module: frontier
+    prerequisites: [agt-01, rag-05, evl-01]
+    status: evolving
+    build_day: 4
+
+# ── Engineering reference docs (spec_version 2) ──────────────────────────────
+# Same id/path/status contract as chapters. `prerequisites` = chapter IDs a
+# reader should know; docs may cross-link chapters not yet generated (paths are
+# manifest-fixed). build_day: 5 = the engineering-repository build phase.
+engineering_docs:
+  - id: eng-01
+    path: engineering/eng-01-rag-pipeline-architecture.md
+    module: engineering
+    prerequisites: [rag-01, api-05]
+    status: evolving
+    build_day: 5
+  - id: eng-02
+    path: engineering/eng-02-agent-loop-architecture.md
+    module: engineering
+    prerequisites: [api-03]
+    status: evolving
+    build_day: 5
+  - id: eng-03
+    path: engineering/eng-03-eval-harness-architecture.md
+    module: engineering
+    prerequisites: [evl-01]
+    status: evolving
+    build_day: 5
+  - id: eng-04
+    path: engineering/eng-04-llmops-stack.md
+    module: engineering
+    prerequisites: [api-01, evl-01]
+    status: evolving
+    build_day: 5
+  - id: eng-05
+    path: engineering/eng-05-design-patterns.md
+    module: engineering
+    prerequisites: [api-03, rag-01]
+    status: evolving
+    build_day: 5
+  - id: eng-06
+    path: engineering/eng-06-prompt-library.md
+    module: engineering
+    prerequisites: [api-02]
+    status: evolving
+    build_day: 5
+  - id: eng-07
+    path: engineering/eng-07-eval-checklists-debugging.md
+    module: engineering
+    prerequisites: [evl-01]
+    status: evolving
+    build_day: 5
+  - id: eng-08
+    path: engineering/eng-08-deployment-guide.md
+    module: engineering
+    prerequisites: [api-01, api-05]
+    status: evolving
+    build_day: 5
+  - id: eng-09
+    path: engineering/eng-09-security-guidelines.md
+    module: engineering
+    prerequisites: [api-03]
+    status: evolving
+    build_day: 5
+  - id: eng-10
+    path: engineering/eng-10-cost-optimization.md
+    module: engineering
+    prerequisites: [api-05, api-06]
+    status: evolving
+    build_day: 5
+  - id: eng-11
+    path: engineering/eng-11-benchmark-templates.md
+    module: engineering
+    prerequisites: [api-06, evl-01]
+    status: evolving
+    build_day: 5
+  - id: eng-12
+    path: engineering/eng-12-interview-prep-pack.md
+    module: engineering
+    prerequisites: [fnd-01]
+    status: evolving
+    build_day: 5
+
+# ── Tutor / RAG query layer (spec_version 3) ─────────────────────────────────
+# Compiled indices + RAG config + reusable prompts + local tool scaffold that
+# turn the corpus into a queryable tutor. Derived artifacts (regenerated from
+# modules/ + engineering/); ids prefixed tut-. build_day: 6 = query-layer phase.
+tutor_docs:
+  - id: tut-01
+    path: tutor/INDEX.md
+    module: tutor
+    prerequisites: []
+    status: evolving
+    build_day: 6
+  - id: tut-02
+    path: tutor/GLOSSARY.md
+    module: tutor
+    prerequisites: []
+    status: evolving
+    build_day: 6
+  - id: tut-03
+    path: tutor/ACRONYMS.md
+    module: tutor
+    prerequisites: []
+    status: stable
+    build_day: 6
+  - id: tut-04
+    path: tutor/knowledge-graph.md
+    module: tutor
+    prerequisites: []
+    status: evolving
+    build_day: 6
+  - id: tut-05
+    path: tutor/rag/chunking.md
+    module: tutor
+    prerequisites: []
+    status: evolving
+    build_day: 6
+  - id: tut-06
+    path: tutor/rag/embedding-strategy.md
+    module: tutor
+    prerequisites: []
+    status: volatile
+    build_day: 6

@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Engineering — Reader</title>
+<style>
+:root{
+  --bg:#ffffff; --bg-alt:#f7f7f5; --bg-sunk:#f0efec; --fg:#1a1a18; --fg-dim:#6b6b66;
+  --line:#e2e1dd; --accent:#b8552b; --accent-soft:#f5e9e3;
+  --ok:#2f7d4f; --warn:#a4711a; --exp:#6b4b9a; --pend:#8a8a85;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#16161a; --bg-alt:#1c1c21; --bg-sunk:#232329; --fg:#e8e6e3; --fg-dim:#9a9a94;
+  --line:#2e2e35; --accent:#e0855c; --accent-soft:#2a1f1a;
+  --ok:#5cb37e; --warn:#d4a24c; --exp:#b28ada; --pend:#77777a;
+}}
+:root[data-theme="dark"]{
+  --bg:#16161a; --bg-alt:#1c1c21; --bg-sunk:#232329; --fg:#e8e6e3; --fg-dim:#9a9a94;
+  --line:#2e2e35; --accent:#e0855c; --accent-soft:#2a1f1a;
+  --ok:#5cb37e; --warn:#d4a24c; --exp:#b28ada; --pend:#77777a;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --bg-alt:#f7f7f5; --bg-sunk:#f0efec; --fg:#1a1a18; --fg-dim:#6b6b66;
+  --line:#e2e1dd; --accent:#b8552b; --accent-soft:#f5e9e3;
+  --ok:#2f7d4f; --warn:#a4711a; --exp:#6b4b9a; --pend:#8a8a85;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+#app{display:grid;grid-template-columns:290px minmax(0,1fr) 210px;height:100vh;overflow:hidden}
+
+/* ---------- sidebar ---------- */
+#sidebar{background:var(--bg-alt);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+#sidehead{padding:14px 14px 10px;border-bottom:1px solid var(--line)}
+#brand{font-weight:650;font-size:13px;letter-spacing:.02em;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+#brand small{font-weight:400;color:var(--fg-dim);font-size:11px}
+#q{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg);font:inherit;font-size:13px}
+#q:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+#qhint{font-size:10.5px;color:var(--fg-dim);margin-top:6px;display:flex;justify-content:space-between}
+#nav{overflow-y:auto;padding:8px 0 40px;flex:1}
+.grp{margin:2px 0 8px}
+.grp>h4{margin:0;padding:9px 14px 5px;font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--fg-dim);font-weight:650}
+a.item{display:flex;gap:8px;align-items:baseline;padding:4px 14px 4px 16px;color:var(--fg);text-decoration:none;font-size:13px;line-height:1.35;border-left:2px solid transparent}
+a.item:hover{background:var(--bg-sunk)}
+a.item.on{background:var(--accent-soft);border-left-color:var(--accent);color:var(--accent);font-weight:600}
+a.item .id{font-family:var(--mono);font-size:10.5px;color:var(--fg-dim);min-width:44px;flex-shrink:0}
+a.item.on .id{color:var(--accent)}
+a.item.pending{opacity:.45}
+a.item .t{flex:1}
+.dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;align-self:center;margin-left:auto}
+.d-stable{background:var(--ok)}.d-evolving{background:var(--warn)}.d-experimental{background:var(--exp)}.d-pending{background:transparent;border:1px solid var(--pend)}
+
+/* ---------- main ---------- */
+main{overflow-y:auto;scroll-behavior:smooth;position:relative}
+#topbar{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:9px 34px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#crumb{font-size:11.5px;color:var(--fg-dim);font-family:var(--mono)}
+.badge{font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--fg-dim);white-space:nowrap}
+.badge.b-stable{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.badge.b-evolving{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.badge.b-experimental{color:var(--exp);border-color:color-mix(in srgb,var(--exp) 40%,transparent)}
+.badge.b-volatile{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+#spacer{flex:1}
+button.tb{background:none;border:1px solid var(--line);color:var(--fg-dim);border-radius:6px;padding:3px 8px;font:inherit;font-size:11.5px;cursor:pointer}
+button.tb:hover{color:var(--fg);border-color:var(--fg-dim)}
+article{padding:26px 34px 90px;max-width:78ch;font-family:var(--serif);font-size:16.5px;line-height:1.68}
+article h1{font-family:var(--sans);font-size:27px;line-height:1.25;margin:.2em 0 .5em;letter-spacing:-.01em}
+article h2{font-family:var(--sans);font-size:19px;margin:2em 0 .6em;padding-top:.4em;border-top:1px solid var(--line);letter-spacing:-.005em;scroll-margin-top:60px}
+article h3{font-family:var(--sans);font-size:15.5px;margin:1.5em 0 .4em;scroll-margin-top:60px}
+article p{margin:0 0 1em}
+article a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+article code{font-family:var(--mono);font-size:.83em;background:var(--bg-sunk);padding:1.5px 5px;border-radius:4px}
+article pre{background:var(--bg-sunk);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+article pre code{background:none;padding:0;font-size:inherit}
+article blockquote{margin:1.2em 0;padding:.7em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 7px 7px 0;font-family:var(--sans);font-size:14px}
+article blockquote p:last-child{margin:0}
+article table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:13.5px;margin:1.2em 0;display:block;overflow-x:auto}
+article th,article td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+article th{background:var(--bg-sunk);font-weight:620}
+article ul,article ol{padding-left:1.4em;margin:0 0 1em}
+article li{margin:.3em 0}
+article hr{border:none;border-top:1px solid var(--line);margin:2em 0}
+article em.cap{display:block;color:var(--fg-dim);font-size:13.5px;font-family:var(--sans);margin-bottom:-.4em}
+.mermaid{background:var(--bg-sunk);border:1px solid var(--line);border-radius:8px;padding:14px;margin:1.2em 0;text-align:center;overflow-x:auto}
+sup.fn a{text-decoration:none;font-size:.7em;padding:0 1px}
+#pager{display:flex;gap:10px;padding:0 34px 50px;max-width:78ch}
+#pager a{flex:1;border:1px solid var(--line);border-radius:9px;padding:10px 13px;text-decoration:none;color:var(--fg);font-family:var(--sans)}
+#pager a:hover{border-color:var(--accent);background:var(--accent-soft)}
+#pager .k{font-size:10.5px;color:var(--fg-dim);display:block}
+#pager .v{font-size:13px;font-weight:600}
+
+/* ---------- toc ---------- */
+#toc{border-left:1px solid var(--line);overflow-y:auto;padding:52px 12px 40px;background:var(--bg)}
+#toc h5{margin:0 0 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--fg-dim)}
+#toc a{display:block;padding:3px 6px;font-size:11.5px;color:var(--fg-dim);text-decoration:none;border-left:2px solid transparent;line-height:1.35;margin-bottom:1px}
+#toc a:hover{color:var(--fg)}
+#toc a.on{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft)}
+
+/* ---------- states ---------- */
+.msg{padding:40px 34px;max-width:70ch;font-family:var(--sans)}
+.msg h2{font-size:19px;margin:0 0 10px}
+.msg p{color:var(--fg-dim);margin:0 0 12px}
+.hitlist{padding:8px 0}
+.hit{display:block;padding:8px 14px;text-decoration:none;color:var(--fg);border-bottom:1px solid var(--line)}
+.hit:hover{background:var(--bg-sunk)}
+.hit .hid{font-family:var(--mono);font-size:10.5px;color:var(--accent)}
+.hit .hsnip{font-size:11.5px;color:var(--fg-dim);display:block;margin-top:2px;line-height:1.4}
+.hit mark{background:var(--accent-soft);color:var(--accent);padding:0 2px;border-radius:2px}
+#menu{display:none}
+#scrim{display:none}
+@media(max-width:1100px){#app{grid-template-columns:250px minmax(0,1fr)}#toc{display:none}}
+@media(max-width:760px){
+  #app{grid-template-columns:1fr}
+  #sidebar{position:fixed;inset:0 auto 0 0;width:280px;z-index:50;transform:translateX(-100%);transition:transform .18s ease;box-shadow:0 0 30px rgba(0,0,0,.25)}
+  #sidebar.open{transform:none}
+  #menu{display:inline-block}
+  #scrim.on{display:block;position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.35)}
+  article,#pager{padding-left:18px;padding-right:18px}
+  #topbar{padding:7px 18px;gap:7px}
+  #crumb{max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #badges{order:9;width:100%;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+  #badges::-webkit-scrollbar{display:none}
+  article{font-size:16px}
+  #pager{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div id="sidehead">
+      <div id="brand">AI Engineering <small id="stat"></small></div>
+      <input id="q" type="search" placeholder="Filter…  (press / )" autocomplete="off" spellcheck="false">
+      <div id="qhint"><span>↵ search all text</span><span id="qcount"></span></div>
+    </div>
+    <nav id="nav"></nav>
+  </aside>
+  <div id="scrim"></div>
+  <main id="main">
+    <div id="topbar">
+      <button class="tb" id="menu" title="Files">☰</button>
+      <span id="crumb"></span>
+      <span id="badges"></span>
+      <span id="spacer"></span>
+      <button class="tb" id="raw" title="View raw markdown">raw</button>
+      <button class="tb" id="theme" title="Toggle theme">◐</button>
+    </div>
+    <article id="content"><div class="msg"><h2>Loading…</h2></div></article>
+    <div id="pager"></div>
+  </main>
+  <aside id="toc"><h5>On this page</h5><div id="toclist"></div></aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+const BASE = new URL('../', location.href).href;      // repo root
+const $ = s => document.querySelector(s);
+const cache = new Map();                               // path -> raw text
+let DOCS = [], cur = null, fullIndexed = false;
+
+/* ---------------- file list ---------------- */
+const META = [
+  ['README.md','README','meta'], ['REVIEW.md','REVIEW — punch list','meta'],
+  ['CONVENTIONS.md','CONVENTIONS','meta'], ['METADATA_SCHEMA.md','METADATA_SCHEMA','meta'],
+  ['CHANGELOG.md','CHANGELOG','meta'], ['glossary.md','glossary (canonical)','meta'],
+  ['curriculum/roadmap.md','Roadmap','meta'], ['curriculum/dependency-graph.md','Dependency graph','meta'],
+];
+const BP = ['AUTHORING_GUIDE','README','day3-rag','day3-evl','day3-agt','day4-prd','day4-sec','day4-ftn','day4-fro']
+  .map(n => [`blueprints/${n}.md`, n, 'blueprints']);
+const PROMPTS = ['tutor','quiz-generator','interview-simulator','architecture-reviewer','code-reviewer']
+  .map(n => [`tutor/prompts/${n}.md`, n, 'prompts']).concat([['tutor/tool/README.md','tool scaffold','prompts']]);
+
+const GROUPS = {
+  meta:'Meta', foundations:'1 · Foundations', 'llm-apis':'2 · LLM APIs', retrieval:'3 · Retrieval',
+  agents:'4 · Agents', evaluation:'5 · Evaluation', production:'6 · Production',
+  'safety-security':'7 · Safety', 'fine-tuning':'8 · Fine-tuning', frontier:'9 · Frontier',
+  engineering:'Engineering', tutor:'Tutor layer', prompts:'Prompts & tool', blueprints:'Blueprints'
+};
+
+async function boot(){
+  let man = '';
+  try { man = await (await fetch(BASE+'manifest.yaml')).text(); }
+  catch(e){ return fail('Cannot read manifest.yaml — is the local server running from the repo root?'); }
+
+  const re = /- id: (\S+)\s*\n\s+path: (\S+)\s*\n\s+module: (\S+)\s*\n\s+prerequisites: (\[[^\]]*\])\s*\n\s+status: (\S+)/g;
+  const fromManifest = [...man.matchAll(re)].map(m => ({
+    id:m[1], path:m[2], group:m[3], status:m[5],
+    prereqs:m[4].replace(/[\[\]]/g,'').split(',').map(s=>s.trim()).filter(Boolean),
+    title:m[2].split('/').pop().replace(/\.md$/,'').replace(/^[a-z]+-\d+-/,'').replace(/-/g,' ')
+  }));
+  const extras = [...META,...BP,...PROMPTS].map(([p,t,g]) => ({id:'',path:p,group:g,status:'',title:t,prereqs:[]}));
+  DOCS = [...extras.filter(d=>d.group==='meta'), ...fromManifest, ...extras.filter(d=>d.group!=='meta')];
+
+  // Which files actually exist (and aren't sub-200-byte stubs)?
+  // Prefer the prebuilt index — one request instead of ~100 HEAD round trips,
+  // which matters on a hosted deploy. Fall back to probing if it's absent.
+  let sizes = null;
+  try{
+    const r = await fetch(BASE+'tutor/files.json');
+    if(r.ok) sizes = await r.json();
+  }catch(e){}
+
+  if(sizes){
+    DOCS.forEach(d => { d.exists = (sizes[d.path]||0) > 200; });
+  }else{
+    await Promise.all(DOCS.map(async d => {
+      try{
+        const r = await fetch(BASE+d.path,{method:'HEAD'});
+        d.exists = r.ok && +(r.headers.get('content-length')||0) > 200;
+      }catch(e){ d.exists = false; }
+    }));
+  }
+
+  const w = DOCS.filter(d=>d.exists).length;
+  $('#stat').textContent = `${w} readable`;
+  renderNav();
+  const start = location.hash.slice(1);
+  open(DOCS.find(d=>d.path===start && d.exists) ? start : 'README.md');
+}
+
+/* ---------------- nav ---------------- */
+function renderNav(filter=''){
+  const f = filter.toLowerCase().trim();
+  const nav = $('#nav'); nav.innerHTML='';
+  let shown = 0;
+  for (const [g,label] of Object.entries(GROUPS)){
+    const items = DOCS.filter(d => d.group===g &&
+      (!f || (d.id+' '+d.title+' '+d.path).toLowerCase().includes(f)));
+    if(!items.length) continue;
+    const box = document.createElement('div'); box.className='grp';
+    box.innerHTML = `<h4>${label}</h4>`;
+    for(const d of items){
+      shown++;
+      const a = document.createElement('a');
+      a.className = 'item'+(d.exists?'':' pending')+(cur&&cur.path===d.path?' on':'');
+      a.href = '#'+d.path;
+      a.innerHTML = `<span class="id">${d.id||''}</span><span class="t">${esc(d.title)}</span>`
+        + (d.status?`<span class="dot d-${d.exists?d.status:'pending'}" title="${d.exists?d.status:'not written yet'}"></span>`:'');
+      a.onclick = e => { e.preventDefault(); open(d.path); drawer(false); };
+      box.appendChild(a);
+    }
+    nav.appendChild(box);
+  }
+  $('#qcount').textContent = f ? `${shown} match` : '';
+}
+
+/* ---------------- open a doc ---------------- */
+async function open(path){
+  const d = DOCS.find(x=>x.path===path);
+  if(!d) return fail('Unknown file: '+path);
+  cur = d; location.hash = path;
+  renderNav($('#q').value);
+
+  if(!d.exists) return pending(d);
+
+  let raw = cache.get(path);
+  if(raw===undefined){
+    try{ raw = await (await fetch(BASE+path)).text(); cache.set(path,raw); }
+    catch(e){ return fail('Could not load '+path); }
+  }
+  const {meta, body} = split(raw);
+  d.title = meta.title || d.title;
+
+  $('#crumb').textContent = (d.id? d.id+'  ·  ' : '') + path;
+  $('#badges').innerHTML = ['status','volatility','difficulty','est_minutes','last_reviewed']
+    .filter(k=>meta[k]).map(k=>{
+      const v = meta[k];
+      const cls = ['stable','evolving','experimental','volatile'].includes(v) ? ' b-'+v : '';
+      const label = k==='est_minutes' ? v+' min' : k==='difficulty' ? 'diff '+v : k==='last_reviewed' ? 'rev '+v : v;
+      return `<span class="badge${cls}">${esc(label)}</span>`;
+    }).join(' ');
+
+  $('#content').innerHTML = render(body, path);
+  decorate(path);
+  $('#main').scrollTop = 0;
+  buildToc(); buildPager();
+  document.title = (meta.title||d.title)+' — AI Engineering';
+}
+
+function pending(d){
+  const bp = {rag:'day3-rag',evl:'day3-evl',agt:'day3-agt',prd:'day4-prd',sec:'day4-sec',ftn:'day4-ftn',fro:'day4-fro'}[d.id.slice(0,3)];
+  $('#crumb').textContent = d.id+'  ·  '+d.path;
+  $('#badges').innerHTML = '<span class="badge">not written yet</span>';
+  $('#content').innerHTML = `<div class="msg">
+    <h2>${esc(d.id)} — not written yet</h2>
+    <p>This chapter has a reserved ID and a generation blueprint, but no content on disk yet.</p>
+    ${bp?`<p><a href="#blueprints/${bp}.md" onclick="open('blueprints/${bp}.md');return false;">Read its blueprint →</a></p>`:''}
+    ${d.prereqs.length?`<p style="font-size:13px">Prerequisites: ${d.prereqs.map(p=>{
+        const t=DOCS.find(x=>x.id===p); return t&&t.exists?`<a href="#${t.path}" onclick="open('${t.path}');return false;">${p}</a>`:p;
+      }).join(' · ')}</p>`:''}
+  </div>`;
+  $('#toclist').innerHTML=''; buildPager();
+}
+function fail(m){ $('#content').innerHTML = `<div class="msg"><h2>${esc(m)}</h2>
+  <p>Start the server from the repo root:</p><pre><code>./read.sh</code></pre></div>`; }
+
+/* ---------------- markdown ---------------- */
+function split(raw){
+  const meta = {};
+  let body = raw;
+  if(raw.startsWith('---')){
+    const end = raw.indexOf('\n---', 3);
+    if(end > 0){
+      const fm = raw.slice(3, end);
+      body = raw.slice(end+4);
+      fm.replace(/^(\w+):\s*(.*)$/gm, (_,k,v)=>{ if(v && !v.startsWith('>')) meta[k]=v.replace(/^["']|["']$/g,''); });
+    }
+  }
+  return {meta, body};
+}
+
+function render(md, path){
+  // footnotes: pull definitions, number inline refs
+  const defs = new Map();
+  md = md.replace(/^\[\^([\w-]+)\]:\s*(.+)$/gm, (_,k,v)=>{ defs.set(k,v); return ''; });
+  let n = 0; const num = new Map();
+  md = md.replace(/\[\^([\w-]+)\]/g, (_,k)=>{
+    if(!num.has(k)) num.set(k, ++n);
+    return `<sup class="fn"><a href="#fn-${k}">[${num.get(k)}]</a></sup>`;
+  });
+  let html = marked.parse(md, {mangle:false, headerIds:true, breaks:false});
+  if(defs.size){
+    html += '<ol style="font-size:13px;font-family:var(--sans);color:var(--fg-dim)">' +
+      [...defs].sort((a,b)=>(num.get(a[0])||99)-(num.get(b[0])||99))
+        .map(([k,v])=>`<li id="fn-${k}">${marked.parseInline(v)}</li>`).join('') + '</ol>';
+  }
+  return html;
+}
+
+function decorate(path){
+  const root = $('#content');
+  // mermaid blocks
+  root.querySelectorAll('pre code.language-mermaid').forEach(c=>{
+    const div = document.createElement('div');
+    div.className = 'mermaid'; div.textContent = c.textContent;
+    c.closest('pre').replaceWith(div);
+  });
+  if(window.mermaid){
+    try{ mermaid.run({nodes: root.querySelectorAll('.mermaid')}); }catch(e){}
+  }
+  // italic caption right before a diagram/table
+  root.querySelectorAll('p > em:only-child').forEach(em=>{
+    const p = em.parentElement, nx = p.nextElementSibling;
+    if(nx && (nx.classList.contains('mermaid') || nx.tagName==='TABLE' || nx.tagName==='PRE')) p.classList.add('capwrap'), em.classList.add('cap');
+  });
+  // internal .md links → in-app nav
+  root.querySelectorAll('a[href]').forEach(a=>{
+    const href = a.getAttribute('href');
+    if(!href || /^https?:|^#|^mailto:/.test(href)) return;
+    const [file, frag] = href.split('#');
+    if(!file.endsWith('.md')) return;
+    const abs = new URL(file, new URL(path, 'file:///')).pathname.slice(1);
+    const t = DOCS.find(d=>d.path===abs);
+    a.href = '#'+abs;
+    a.onclick = e => { e.preventDefault(); open(abs).then(()=>{ if(frag) location.hash=''; scrollToFrag(frag); }); };
+    if(t && !t.exists) a.style.opacity = .55, a.title = 'not written yet';
+  });
+}
+function scrollToFrag(frag){
+  if(!frag) return;
+  const el = document.getElementById(frag) ||
+    [...$('#content').querySelectorAll('h2,h3')].find(h=>h.textContent.toLowerCase().replace(/[^\w]+/g,'-').includes(frag));
+  if(el) el.scrollIntoView({block:'start'});
+}
+
+/* ---------------- toc + pager ---------------- */
+function buildToc(){
+  const hs = [...$('#content').querySelectorAll('h2')];
+  $('#toclist').innerHTML = hs.map((h,i)=>{
+    h.id = h.id || 'h'+i;
+    return `<a href="#${h.id}" data-i="${i}">${esc(h.textContent)}</a>`;
+  }).join('');
+  $('#toclist').querySelectorAll('a').forEach((a,i)=>{
+    a.onclick = e => { e.preventDefault(); hs[i].scrollIntoView({block:'start'}); };
+  });
+}
+$('#main').addEventListener('scroll', ()=>{
+  const hs = [...$('#content').querySelectorAll('h2')];
+  const links = $('#toclist').querySelectorAll('a');
+  let act = 0;
+  hs.forEach((h,i)=>{ if(h.getBoundingClientRect().top < 120) act = i; });
+  links.forEach((a,i)=>a.classList.toggle('on', i===act));
+});
+
+function buildPager(){
+  const list = DOCS.filter(d=>d.exists);
+  const i = list.findIndex(d=>d.path===cur.path);
+  const mk = (d,k)=> d ? `<a href="#${d.path}" onclick="open('${d.path}');return false;"><span class="k">${k}</span><span class="v">${esc(d.title)}</span></a>` : '';
+  $('#pager').innerHTML = mk(list[i-1],'← previous') + mk(list[i+1],'next →');
+}
+
+/* ---------------- search ---------------- */
+const q = $('#q');
+q.addEventListener('input', ()=>renderNav(q.value));
+q.addEventListener('keydown', async e=>{
+  if(e.key==='Enter' && q.value.trim().length>1) await fullSearch(q.value.trim());
+  if(e.key==='Escape'){ q.value=''; renderNav(); q.blur(); }
+});
+async function fullSearch(term){
+  const todo = DOCS.filter(d=>d.exists && !cache.has(d.path));
+  if(todo.length){
+    $('#content').innerHTML = `<div class="msg"><h2>Indexing ${todo.length} files…</h2></div>`;
+    await Promise.all(todo.map(async d=>{
+      try{ cache.set(d.path, await (await fetch(BASE+d.path)).text()); }catch(e){ cache.set(d.path,''); }
+    }));
+  }
+  const rx = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'ig');
+  const hits = [];
+  for(const d of DOCS.filter(x=>x.exists)){
+    const txt = split(cache.get(d.path)||'').body;   // search prose, not frontmatter
+    let m, count=0, first=null;
+    rx.lastIndex = 0;
+    while((m = rx.exec(txt)) && count<200){ count++; if(!first) first=m.index; }
+    if(count) hits.push({d, count, snip: snippet(txt, first, term)});
+  }
+  hits.sort((a,b)=>b.count-a.count);
+  $('#crumb').textContent = 'search'; $('#badges').innerHTML = `<span class="badge">${hits.length} files</span>`;
+  $('#content').innerHTML = `<div class="msg" style="padding-bottom:6px"><h2>“${esc(term)}” — ${hits.reduce((s,h)=>s+h.count,0)} matches in ${hits.length} files</h2></div>
+    <div class="hitlist">` + hits.map(h=>
+      `<a class="hit" href="#${h.d.path}" onclick="open('${h.d.path}');return false;">
+        <span class="hid">${h.d.id||h.d.group}</span> <strong>${esc(h.d.title)}</strong>
+        <span class="badge" style="margin-left:6px">${h.count}</span>
+        <span class="hsnip">${h.snip}</span></a>`).join('') + '</div>';
+  $('#toclist').innerHTML=''; $('#pager').innerHTML='';
+}
+function snippet(txt, at, term){
+  const s = Math.max(0, at-90), e = Math.min(txt.length, at+150);
+  return esc(txt.slice(s,e).replace(/\s+/g,' '))
+    .replace(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'ig'), m=>`<mark>${m}</mark>`);
+}
+
+/* ---------------- chrome ---------------- */
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+$('#theme').onclick = ()=>{
+  const now = document.documentElement.getAttribute('data-theme')
+    || (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  const next = now==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  if(window.mermaid) mermaid.initialize({startOnLoad:false, theme: next==='dark'?'dark':'default'});
+  if(cur) open(cur.path);
+};
+$('#raw').onclick = ()=>{ if(cur) window.open(BASE+cur.path,'_blank'); };
+function drawer(on){
+  const sb = $('#sidebar');
+  const want = on===undefined ? !sb.classList.contains('open') : on;
+  sb.classList.toggle('open', want);
+  $('#scrim').classList.toggle('on', want);
+}
+$('#menu').onclick = ()=>drawer();
+$('#scrim').onclick = ()=>drawer(false);
+addEventListener('keydown', e=>{
+  if(e.key==='/' && document.activeElement!==q){ e.preventDefault(); q.focus(); q.select(); }
+  if(document.activeElement===q) return;
+  const list = DOCS.filter(d=>d.exists), i = list.findIndex(d=>cur&&d.path===cur.path);
+  if(e.key===']' && list[i+1]) open(list[i+1].path);
+  if(e.key==='[' && list[i-1]) open(list[i-1].path);
+});
+addEventListener('hashchange', ()=>{ const p=location.hash.slice(1); if(p && (!cur||cur.path!==p)) open(p); });
+
+const saved = localStorage.getItem('theme');
+if(saved) document.documentElement.setAttribute('data-theme', saved);
+if(window.mermaid) mermaid.initialize({startOnLoad:false, securityLevel:'loose',
+  theme:(saved||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'))==='dark'?'dark':'default'});
+if(!window.marked){ fail('marked.js failed to load — check your connection (CDN) and reload.'); }
+else boot();
+</script>
+</body>
+</html>
