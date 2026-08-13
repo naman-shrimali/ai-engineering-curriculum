@@ -1,10 +1,23 @@
-# Deploying the reader to GitHub Pages
+# Deployment
 
-The repo is committed and Pages-ready. What remains needs your GitHub credentials, which this machine doesn't have (`gh` CLI isn't installed and no remote is configured), so run one of the two paths below.
+> Already deployed. This file is now the redeploy runbook + first-time setup reference.
 
-**Note before you publish:** GitHub Pages requires a **public** repository on free accounts. Deploying therefore publishes the whole curriculum publicly. That's fine if intended — just make it a deliberate choice.
+**Status: live at [https://naman-shrimali.github.io/ai-engineering-curriculum/](https://naman-shrimali.github.io/ai-engineering-curriculum/)** — repo: [https://github.com/naman-shrimali/ai-engineering-curriculum](https://github.com/naman-shrimali/ai-engineering-curriculum), Pages serving from `main` / root.
 
-## Path A — no extra tooling (create the repo in the browser)
+Day-to-day you don't need any of this; just `./read.sh` locally, or open the live URL. The sections below cover redeploying, and the first-time setup for anyone forking this.
+
+## Updating the live site
+
+```bash
+python3 tutor/build-index.py     # refresh written/pending state
+git add -A && git commit -m "..." && git push
+```
+
+Pages rebuilds within a minute or two.
+
+## First-time setup (for a fork or a fresh account)
+
+### Path A — no extra tooling (create the repo in the browser)
 
 1. Create a new **public**, empty repo at <https://github.com/new> — no README, no .gitignore, no license (the local repo already has everything). Name it e.g. `ai-engineering-curriculum`.
 2. Push:
@@ -18,7 +31,7 @@ git push -u origin main
 3. Enable Pages: repo **Settings → Pages → Source: Deploy from a branch → Branch: `main`, folder: `/ (root)` → Save**.
 4. Wait ~1 minute, then open `https://<your-username>.github.io/ai-engineering-curriculum/`.
 
-## Path B — with the GitHub CLI
+### Path B — with the GitHub CLI
 
 ```bash
 brew install gh

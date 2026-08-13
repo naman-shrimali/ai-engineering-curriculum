@@ -2,6 +2,11 @@
 
 Repo-level change history. CalVer tags per CONVENTIONS §6.
 
+## 2026-07-10 — published to GitHub Pages
+
+- Repo pushed to [https://github.com/naman-shrimali/ai-engineering-curriculum](https://github.com/naman-shrimali/ai-engineering-curriculum) (public) and Pages enabled on `main` / root; live at https://naman-shrimali.github.io/ai-engineering-curriculum/
+- Verified on the deployed site: all assets 200, `.nojekyll` confirmed working (chapters serve as raw `text/markdown` with frontmatter intact rather than being converted by Jekyll), root redirect lands on the reader, 102 nav items, 42 correctly marked pending, Mermaid renders, 0 failed requests, 6 requests total on load.
+
 ## 2026-07-10 — reader made GitHub Pages deployable
 
 - Added `.nojekyll` (critical — Jekyll would otherwise convert the frontmatter-carrying `.md` files to HTML and break every fetch), root `index.html` redirect, and `tutor/build-index.py` → `tutor/files.json` (one request replaces ~100 HEAD probes; load went from ~105 requests to 5).

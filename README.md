@@ -1,5 +1,7 @@
 # AI Engineering: A Production-Grade Curriculum
 
+**Read it online → [https://naman-shrimali.github.io/ai-engineering-curriculum/](https://naman-shrimali.github.io/ai-engineering-curriculum/)**
+
 An open-source knowledge repository for software engineers moving into AI engineering. It is built to rival a top university course in rigor, and to exceed one in practicality: every chapter is written for someone who will ship LLM systems to production, not pass an exam.
 
 ## Who this is for
@@ -48,7 +50,7 @@ Every content file is one **chapter** with a stable ID (e.g. `rag-05`), YAML fro
 
 Opens a local reader UI (`tutor/reader.html`) with a grouped sidebar, full-text search across every file, working cross-links, rendered Mermaid diagrams, and a per-page table of contents. It renders the same `.md` files you see in the repo — nothing is duplicated, so the Markdown stays the single source of truth. Needs a local server (browsers block `file://` fetches); `read.sh` starts one on `:8123` and opens the page.
 
-To publish it as a website, see [DEPLOY.md](DEPLOY.md) — the repo is GitHub Pages ready.
+The same reader is published at [https://naman-shrimali.github.io/ai-engineering-curriculum/](https://naman-shrimali.github.io/ai-engineering-curriculum/); see [DEPLOY.md](DEPLOY.md) to redeploy.
 
 ## How to navigate
 
