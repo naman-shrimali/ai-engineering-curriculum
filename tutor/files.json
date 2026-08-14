@@ -57,6 +57,8 @@
 "modules/04-agents/agt-02-tool-design.md": 31821,
 "modules/04-agents/agt-03-reasoning-and-planning.md": 34930,
 "modules/04-agents/agt-04-memory-and-state.md": 33035,
+"modules/04-agents/agt-05-mcp.md": 31340,
+"modules/04-agents/agt-06-multi-agent-systems.md": 31772,
 "modules/05-evaluation/evl-01-evaluation-fundamentals.md": 32765,
 "modules/05-evaluation/evl-02-eval-datasets.md": 32700,
 "modules/05-evaluation/evl-03-llm-as-judge.md": 36158,
