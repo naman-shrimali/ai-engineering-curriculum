@@ -240,7 +240,7 @@ The rung most teams skip, and often the highest-yield: **use the structure you a
 |---|---|
 | The funnel's division of labor? | First stage owns recall (cheap, wide); rerank owns precision (expensive, narrow). |
 | Why does BM25 complement embeddings? | It matches exact rare tokens (codes, names, versions) that dense vectors blur; embeddings bridge vocabulary gaps BM25 can't. |
-| The RRF formula and why ranks not scores? | Σ 1/(k + rank), k≈60 — BM25 and cosine scores are uncalibrated and shift per query, so ordinal fusion is robust and tuning-free. |
+| The RRF formula and why ranks not scores? | sum of 1/(k + rank) across retrievers, k≈60 — BM25 and cosine scores are uncalibrated and shift per query, so ordinal fusion is robust and tuning-free. |
 | Bi-encoder vs cross-encoder? | Bi: query and passage encoded separately (precomputable, scalable, less accurate). Cross: encoded together (attention across the pair, accurate, one forward pass per pair). |
 | Typical rerank parameters? | 20–50 candidates in, 3–8 out; recall gains flatten past ~50 while cost grows linearly. |
 | A reranker cannot fix what? | Recall — it only reorders the shortlist it's given. |
