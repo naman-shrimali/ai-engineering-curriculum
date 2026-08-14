@@ -50,6 +50,8 @@
 "modules/03-retrieval/rag-03-vector-databases.md": 31480,
 "modules/03-retrieval/rag-04-chunking.md": 32821,
 "modules/03-retrieval/rag-05-rag-pipeline.md": 38135,
+"modules/03-retrieval/rag-06-advanced-retrieval.md": 35142,
+"modules/03-retrieval/rag-07-rag-evaluation.md": 35396,
 "modules/04-agents/agt-01-agent-fundamentals.md": 29,
 "modules/05-evaluation/evl-01-evaluation-fundamentals.md": 32765,
 "modules/09-frontier/fro-04-staying-current.md": 25222,
