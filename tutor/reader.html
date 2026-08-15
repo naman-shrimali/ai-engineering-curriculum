@@ -331,6 +331,20 @@ function render(md, path){
   return html;
 }
 
+function fixMermaidSizing(root){
+  // mermaid renders svg width="100%" with no height, which lets the browser
+  // scale wide diagrams down to fit the container instead of scrolling them
+  // at a readable size (container already has overflow-x:auto for this).
+  root.querySelectorAll('.mermaid svg').forEach(svg=>{
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    if(vb && vb.width){
+      svg.style.setProperty('width', vb.width + 'px', 'important');
+      svg.style.setProperty('height', vb.height + 'px', 'important');
+      svg.style.setProperty('max-width', 'none', 'important');
+    }
+  });
+}
+
 function decorate(path){
   const root = $('#content');
   // mermaid blocks
@@ -340,7 +354,10 @@ function decorate(path){
     c.closest('pre').replaceWith(div);
   });
   if(window.mermaid){
-    try{ mermaid.run({nodes: root.querySelectorAll('.mermaid')}); }catch(e){}
+    try{
+      Promise.resolve(mermaid.run({nodes: root.querySelectorAll('.mermaid')}))
+        .then(()=>fixMermaidSizing(root)).catch(()=>{});
+    }catch(e){}
   }
   // italic caption right before a diagram/table
   root.querySelectorAll('p > em:only-child').forEach(em=>{
