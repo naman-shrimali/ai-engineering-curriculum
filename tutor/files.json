@@ -70,6 +70,8 @@
 "modules/05-evaluation/evl-06-ci-for-llm-apps.md": 32479,
 "modules/06-production/prd-01-architecture-patterns.md": 30642,
 "modules/06-production/prd-02-inference-and-serving.md": 34822,
+"modules/06-production/prd-03-inference-optimization.md": 31537,
+"modules/06-production/prd-04-reliability.md": 30882,
 "modules/09-frontier/fro-04-staying-current.md": 25222,
 "tutor/ACRONYMS.md": 6071,
 "tutor/GLOSSARY.md": 13560,
