@@ -12,6 +12,7 @@
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --scrollfade:color-mix(in srgb,var(--fg) 32%,transparent);
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#16161a; --bg-alt:#1c1c21; --bg-sunk:#232329; --fg:#e8e6e3; --fg-dim:#9a9a94;
@@ -345,6 +346,29 @@ function fixMermaidSizing(root){
   });
 }
 
+function updateScrollFade(el){
+  // edge shadows that hint "more content this way" on any horizontally
+  // scrollable element (table/mermaid/pre all use overflow-x:auto), and
+  // disappear once scrolled to that edge or once nothing overflows at all.
+  const max = el.scrollWidth - el.clientWidth;
+  if(max <= 1){ el.style.boxShadow = ''; return; }
+  const atStart = el.scrollLeft <= 1, atEnd = el.scrollLeft >= max - 1;
+  const shadows = [];
+  if(!atStart) shadows.push('inset 14px 0 10px -10px var(--scrollfade)');
+  if(!atEnd) shadows.push('inset -14px 0 10px -10px var(--scrollfade)');
+  el.style.boxShadow = shadows.join(', ');
+}
+function initScrollFade(el){
+  updateScrollFade(el);
+  if(!el.dataset.fadeBound){
+    el.dataset.fadeBound = '1';
+    el.addEventListener('scroll', ()=>updateScrollFade(el), {passive:true});
+  }
+}
+addEventListener('resize', ()=>{
+  $('#content').querySelectorAll('table, .mermaid, pre').forEach(updateScrollFade);
+});
+
 function decorate(path){
   const root = $('#content');
   // mermaid blocks
@@ -356,9 +380,11 @@ function decorate(path){
   if(window.mermaid){
     try{
       Promise.resolve(mermaid.run({nodes: root.querySelectorAll('.mermaid')}))
-        .then(()=>fixMermaidSizing(root)).catch(()=>{});
+        .then(()=>{ fixMermaidSizing(root); root.querySelectorAll('.mermaid').forEach(initScrollFade); })
+        .catch(()=>{});
     }catch(e){}
   }
+  root.querySelectorAll('table, pre').forEach(initScrollFade);
   // italic caption right before a diagram/table
   root.querySelectorAll('p > em:only-child').forEach(em=>{
     const p = em.parentElement, nx = p.nextElementSibling;
