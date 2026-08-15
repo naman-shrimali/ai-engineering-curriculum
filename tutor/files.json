@@ -74,6 +74,8 @@
 "modules/06-production/prd-04-reliability.md": 30882,
 "modules/06-production/prd-05-cost-engineering.md": 23113,
 "modules/06-production/prd-06-deployment-infrastructure.md": 24732,
+"modules/07-safety-security/sec-01-prompt-injection.md": 27673,
+"modules/07-safety-security/sec-02-guardrails.md": 25429,
 "modules/09-frontier/fro-04-staying-current.md": 25222,
 "tutor/ACRONYMS.md": 6071,
 "tutor/GLOSSARY.md": 13560,
