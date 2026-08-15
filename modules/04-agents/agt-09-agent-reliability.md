@@ -33,7 +33,7 @@ sources:
     accessed: 2026-07-10
   - key: yao-taubench
     tier: 2
-    title: "τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+    title: "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
     org: arXiv
     url: https://arxiv.org/abs/2406.12045
     accessed: 2026-07-10
@@ -276,7 +276,7 @@ The pre-launch checklist, synthesizing [eng-02](../../engineering/eng-02-agent-l
 ## Further reading
 
 - **Official docs:** none authoritative; provider agent guidance is the closest.
-- **Papers:** Yao et al., τ-bench (2024)[^yao-taubench] — read for the consistency-across-trials gap, the most transferable finding; Jiménez et al., SWE-bench (2023)[^jimenez-swebench] for realistic multi-step task measurement; Zheng et al. (2023)[^zheng-judge] for the judge machinery trajectory scoring depends on.
+- **Papers:** Yao et al., tau-bench (2024)[^yao-taubench] — read for the consistency-across-trials gap, the most transferable finding; Jiménez et al., SWE-bench (2023)[^jimenez-swebench] for realistic multi-step task measurement; Zheng et al. (2023)[^zheng-judge] for the judge machinery trajectory scoring depends on.
 - **Books:** none current enough.
 - **Talks:** none essential.
 - **Tutorials:** Anthropic's "Building effective agents"[^anthropic-agents] — the constraint-and-simplicity argument that this chapter operationalizes.
@@ -292,6 +292,6 @@ The pre-launch checklist, synthesizing [eng-02](../../engineering/eng-02-agent-l
 ## Sources
 
 [^anthropic-agents]: [T4] Anthropic (2024). "Building effective agents." Anthropic Engineering. https://www.anthropic.com/engineering/building-effective-agents (accessed 2026-07-10)
-[^yao-taubench]: [T2] Yao et al. (2024). "τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains." arXiv:2406.12045. https://arxiv.org/abs/2406.12045 (accessed 2026-07-10)
+[^yao-taubench]: [T2] Yao et al. (2024). "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains." arXiv:2406.12045. https://arxiv.org/abs/2406.12045 (accessed 2026-07-10)
 [^jimenez-swebench]: [T2] Jiménez et al. (2023). "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?" arXiv:2310.06770. https://arxiv.org/abs/2310.06770 (accessed 2026-07-10)
 [^zheng-judge]: [T2] Zheng et al. (2023). "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena." arXiv:2306.05685. https://arxiv.org/abs/2306.05685 (accessed 2026-07-10)
