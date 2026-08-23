@@ -4,7 +4,7 @@ A curated queue of primary sources — mostly papers — organized by the curric
 
 Every link below has a **+** button next to it in the reader — click it to push that paper into your Read Later queue.
 
-> **Source:** the bulk of this list is adapted from [InterviewReady's AI engineering resources](https://github.com/InterviewReady/ai-engineering-resources), an excellent topic-organized collection. What's added here is the mapping: each paper sits under the chapter whose ideas it underpins, so you can read a chapter and then go straight to its primary sources.
+> **Source:** the papers below are drawn from [InterviewReady's AI engineering resources](https://github.com/InterviewReady/ai-engineering-resources), which groups them by topic. They are regrouped here by chapter, so each paper sits under the material it underpins.
 
 ---
 
@@ -82,7 +82,7 @@ The two sides of the argument, worth reading back to back:
 
 Reference code:
 
-- [A minimal RAG implementation](https://github.com/InterviewReady/ai-engineering-resources/blob/main/code/rag) — ~70 lines: embed, cosine-similarity retrieve, stuff into a prompt. Worth reading once as the honest skeleton underneath [rag-05](modules/03-retrieval/rag-05-rag-pipeline.md), then compare against everything that chapter says a production pipeline adds on top.
+- [A minimal RAG implementation](https://github.com/InterviewReady/ai-engineering-resources/blob/main/code/rag) — ~70 lines: embed, cosine-similarity retrieve, stuff into a prompt. The skeleton underneath [rag-05](modules/03-retrieval/rag-05-rag-pipeline.md); read it against everything that chapter adds on top.
 
 ---
 
@@ -142,7 +142,7 @@ Reference code:
 
 **Alternative architectures (SSMs)** — pairs with [fro-04](modules/09-frontier/fro-04-staying-current.md)
 
-The most credible current challenge to the transformer's dominance:
+Sub-quadratic alternatives to attention:
 
 - [Mamba](https://arxiv.org/pdf/2312.00752)
 - [RWKV: Reinventing RNNs for the Transformer Era](https://arxiv.org/pdf/2305.13048)
@@ -178,40 +178,78 @@ Production write-ups — the closest thing to seeing someone else's [prd-01](mod
 
 ---
 
-## Blogs worth following
+## Blogs and newsletters
 
-Papers tell you what was discovered; blogs tell you what it's like to build with it. This section is **not** from the source repo above — its `blogs/` folder turned out to hold a single course announcement — so these are added here on their own merit. Every link was checked before it went in.
+Papers report results; blogs report what happened when someone built on them. Not from the source repo above — its `blogs/` folder contains a single course announcement. Descriptions state what each source covers; every URL was checked before inclusion.
 
-[fro-04](modules/09-frontier/fro-04-staying-current.md) argues you should subscribe to *few* things and read them properly. Treat this as a menu, not a checklist: pick two or three.
+Capped at 40. [fro-04](modules/09-frontier/fro-04-staying-current.md) covers how to keep an information diet from becoming a second job — pick a handful, not the whole list.
 
-**Deep explainers** — when you want a concept properly unpacked
+**Explainers and fundamentals** — pairs with Module 1
 
-- [Lil'Log (Lilian Weng)](https://lilianweng.github.io/) — long, careful surveys of a topic at a time; among the best free technical writing in the field
-- [Jay Alammar](https://jalammar.github.io/illustrated-transformer/) — the illustrated explanations; the Transformer post is the standard visual introduction, and pairs directly with [fnd-05](modules/01-foundations/fnd-05-transformer-architecture.md)
-- [Andrej Karpathy](https://karpathy.github.io/) — first-principles posts on how neural nets actually behave
-- [Distill](https://distill.pub/) — interactive visual explanations; no longer publishing, but the back catalogue is still worth working through
+- [Lil'Log (Lilian Weng)](https://lilianweng.github.io/) — long-form surveys, one topic at a time
+- [Jay Alammar](https://jalammar.github.io/illustrated-transformer/) — diagram-led walkthroughs; the Transformer post pairs with [fnd-05](modules/01-foundations/fnd-05-transformer-architecture.md)
+- [Andrej Karpathy](https://karpathy.github.io/) — first-principles posts on neural network behaviour
+- [colah's blog (Christopher Olah)](https://colah.github.io/) — visual explanations of representations, LSTMs, and interpretability
+- [Distill](https://distill.pub/) — interactive ML explanations; archived, no longer publishing
+- [Sebastian Ruder](https://www.ruder.io/) — NLP research summaries and survey posts
+- [fast.ai](https://www.fast.ai/) — practical deep learning, teaching-first
 
-**Applied practice** — the closest thing to this curriculum's Modules 5–8 in blog form
+**Applied LLM practice** — pairs with Modules 5–8
 
-- [Eugene Yan](https://eugeneyan.com/writing/) — applied LLM systems, evals, and patterns; already cited in [fro-05](modules/09-frontier/fro-05-interviews-portfolio.md)
-- [Hamel Husain](https://hamel.dev/) — evals and fine-tuning in practice, with unusual specificity about what actually goes wrong
-- [Chip Huyen](https://huyenchip.com/blog/) — ML systems design; the reference behind much of [prd-01](modules/06-production/prd-01-architecture-patterns.md)'s framing
-- [What We Learned from a Year of Building with LLMs](https://applied-llms.org/) — a multi-author retrospective that reads like a compressed version of Modules 5–7
+- [Eugene Yan](https://eugeneyan.com/writing/) — applied LLM systems, evals, and patterns; cited in [fro-05](modules/09-frontier/fro-05-interviews-portfolio.md)
+- [Hamel Husain](https://hamel.dev/) — evals and fine-tuning workflows
+- [Chip Huyen](https://huyenchip.com/blog/) — ML systems design; a reference behind [prd-01](modules/06-production/prd-01-architecture-patterns.md)'s framing
+- [What We Learned from a Year of Building with LLMs](https://applied-llms.org/) — multi-author retrospective covering roughly the ground of Modules 5–7
+- [Vicki Boykis](https://vickiboykis.com/) — essays on embeddings and ML practice
 
-**Staying current** — see [fro-04](modules/09-frontier/fro-04-staying-current.md) before subscribing to all of these
+**Staying current** — read [fro-04](modules/09-frontier/fro-04-staying-current.md) before subscribing to these
 
-- [Simon Willison](https://simonwillison.net/) — near-daily notes on what shipped and why it matters; the single best signal-to-noise feed in the field
+- [Simon Willison](https://simonwillison.net/) — near-daily notes on releases and capabilities
 - [Ahead of AI (Sebastian Raschka)](https://magazine.sebastianraschka.com/) — research digests with implementation detail
-- [The Gradient](https://thegradient.pub/) — longer-form essays and commentary
+- [Import AI (Jack Clark)](https://importai.substack.com/) — weekly research and policy roundup
+- [Interconnects (Nathan Lambert)](https://www.interconnects.ai/) — post-training, RLHF, and open-model analysis; relevant to [ftn-05](modules/08-fine-tuning/ftn-05-preference-optimization.md)
+- [The Batch (DeepLearning.AI)](https://www.deeplearning.ai/the-batch/) — weekly news summary
+- [The Gradient](https://thegradient.pub/) — long-form essays and commentary
 
-**From the teams shipping it**
+**Research labs**
 
 - [Anthropic Engineering](https://www.anthropic.com/engineering)
 - [OpenAI research](https://openai.com/news/research/)
-- [Netflix TechBlog](https://netflixtechblog.com/) — the recommendation and foundation-model posts especially
+- [Google Research](https://research.google/blog/)
+- [Google DeepMind](https://deepmind.google/discover/blog/)
+- [EleutherAI](https://blog.eleuther.ai/) — open-model training and interpretability write-ups
+
+**Serving and infrastructure** — pairs with [prd-02](modules/06-production/prd-02-inference-and-serving.md), [prd-03](modules/06-production/prd-03-inference-optimization.md)
+
+- [vLLM](https://blog.vllm.ai/) — the engine behind much of this module's continuous-batching and PagedAttention material
+- [Modal](https://modal.com/blog) — serverless GPU infrastructure (vendor)
+- [Baseten](https://www.baseten.co/blog/) — model serving and inference optimization (vendor)
+- [Anyscale](https://www.anyscale.com/blog) — Ray and distributed inference (vendor)
+- [NVIDIA Developer](https://developer.nvidia.com/blog/) — kernels, quantization, and GPU-level detail (vendor)
+
+**Retrieval and vector search** — pairs with Module 3; all vendor-published, so read alongside [rag-02](modules/03-retrieval/rag-02-vector-search.md) rather than instead of it
+
+- [Weaviate](https://weaviate.io/blog)
+- [Qdrant](https://qdrant.tech/blog/)
+- [Vespa](https://blog.vespa.ai/) — ranking and hybrid retrieval at scale
+- [Elastic Search Labs](https://www.elastic.co/search-labs) — hybrid search and BM25/vector combination
+- [Pinecone Learn](https://www.pinecone.io/learn/) — vector-search and RAG explainers
+
+**Frameworks and tooling** — pairs with [agt-07](modules/04-agents/agt-07-agent-frameworks.md)
+
+- [LangChain](https://blog.langchain.dev/) (vendor)
+- [LlamaIndex](https://www.llamaindex.ai/blog) (vendor)
+- [Hugging Face](https://huggingface.co/blog) — model releases, training and quantization write-ups
+
+**Security** — pairs with [sec-01](modules/07-safety-security/sec-01-prompt-injection.md)
+
+- [Embrace The Red](https://embracethered.com/blog/) — prompt injection and agent exploitation research
+
+**Production case studies**
+
+- [Netflix TechBlog](https://netflixtechblog.com/) — recommendation and foundation-model posts
 - [Uber Engineering](https://www.uber.com/blog/engineering/)
-- [Pinecone Learn](https://www.pinecone.io/learn/) — solid vector-search and RAG explainers; vendor-published, so read it alongside [rag-02](modules/03-retrieval/rag-02-vector-search.md) rather than instead of it
-- [Vicki Boykis](https://vickiboykis.com/) — essays on embeddings and the practical shape of ML work
+- [AWS Machine Learning](https://aws.amazon.com/blogs/machine-learning/) (vendor)
 
 ---
 
