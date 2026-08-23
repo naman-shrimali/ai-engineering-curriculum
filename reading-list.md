@@ -80,6 +80,10 @@ The two sides of the argument, worth reading back to back:
 - [RAG with Knowledge Graphs for Customer Service QA](https://arxiv.org/pdf/2404.17723v1)
 - [Chain-of-Retrieval Augmented Generation](https://arxiv.org/pdf/2501.14342)
 
+Reference code:
+
+- [A minimal RAG implementation](https://github.com/InterviewReady/ai-engineering-resources/blob/main/code/rag) — ~70 lines: embed, cosine-similarity retrieve, stuff into a prompt. Worth reading once as the honest skeleton underneath [rag-05](modules/03-retrieval/rag-05-rag-pipeline.md), then compare against everything that chapter says a production pipeline adds on top.
+
 ---
 
 ## 4 · Agents
@@ -171,6 +175,43 @@ Production write-ups — the closest thing to seeing someone else's [prd-01](mod
 - [Swiggy: search relevance with small language models](https://bytes.swiggy.com/improving-search-relevance-in-hyperlocal-food-delivery-using-small-language-models-ecda2acc24e6)
 - [Netflix: foundation model for personalized recommendation](https://netflixtechblog.com/foundation-model-for-personalized-recommendation-1a0bd8e02d39)
 - [Uber QueryGPT](https://www.uber.com/en-IN/blog/query-gpt/)
+
+---
+
+## Blogs worth following
+
+Papers tell you what was discovered; blogs tell you what it's like to build with it. This section is **not** from the source repo above — its `blogs/` folder turned out to hold a single course announcement — so these are added here on their own merit. Every link was checked before it went in.
+
+[fro-04](modules/09-frontier/fro-04-staying-current.md) argues you should subscribe to *few* things and read them properly. Treat this as a menu, not a checklist: pick two or three.
+
+**Deep explainers** — when you want a concept properly unpacked
+
+- [Lil'Log (Lilian Weng)](https://lilianweng.github.io/) — long, careful surveys of a topic at a time; among the best free technical writing in the field
+- [Jay Alammar](https://jalammar.github.io/illustrated-transformer/) — the illustrated explanations; the Transformer post is the standard visual introduction, and pairs directly with [fnd-05](modules/01-foundations/fnd-05-transformer-architecture.md)
+- [Andrej Karpathy](https://karpathy.github.io/) — first-principles posts on how neural nets actually behave
+- [Distill](https://distill.pub/) — interactive visual explanations; no longer publishing, but the back catalogue is still worth working through
+
+**Applied practice** — the closest thing to this curriculum's Modules 5–8 in blog form
+
+- [Eugene Yan](https://eugeneyan.com/writing/) — applied LLM systems, evals, and patterns; already cited in [fro-05](modules/09-frontier/fro-05-interviews-portfolio.md)
+- [Hamel Husain](https://hamel.dev/) — evals and fine-tuning in practice, with unusual specificity about what actually goes wrong
+- [Chip Huyen](https://huyenchip.com/blog/) — ML systems design; the reference behind much of [prd-01](modules/06-production/prd-01-architecture-patterns.md)'s framing
+- [What We Learned from a Year of Building with LLMs](https://applied-llms.org/) — a multi-author retrospective that reads like a compressed version of Modules 5–7
+
+**Staying current** — see [fro-04](modules/09-frontier/fro-04-staying-current.md) before subscribing to all of these
+
+- [Simon Willison](https://simonwillison.net/) — near-daily notes on what shipped and why it matters; the single best signal-to-noise feed in the field
+- [Ahead of AI (Sebastian Raschka)](https://magazine.sebastianraschka.com/) — research digests with implementation detail
+- [The Gradient](https://thegradient.pub/) — longer-form essays and commentary
+
+**From the teams shipping it**
+
+- [Anthropic Engineering](https://www.anthropic.com/engineering)
+- [OpenAI research](https://openai.com/news/research/)
+- [Netflix TechBlog](https://netflixtechblog.com/) — the recommendation and foundation-model posts especially
+- [Uber Engineering](https://www.uber.com/blog/engineering/)
+- [Pinecone Learn](https://www.pinecone.io/learn/) — solid vector-search and RAG explainers; vendor-published, so read it alongside [rag-02](modules/03-retrieval/rag-02-vector-search.md) rather than instead of it
+- [Vicki Boykis](https://vickiboykis.com/) — essays on embeddings and the practical shape of ML work
 
 ---
 
