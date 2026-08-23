@@ -86,6 +86,33 @@ article li{margin:.3em 0}
 article hr{border:none;border-top:1px solid var(--line);margin:2em 0}
 article em.cap{display:block;color:var(--fg-dim);font-size:13.5px;font-family:var(--sans);margin-bottom:-.4em}
 .mermaid{background:var(--bg-sunk);border:1px solid var(--line);border-radius:8px;padding:14px;margin:1.2em 0;text-align:center;overflow-x:auto}
+
+/* ---------- read later ---------- */
+.rl-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:1.1em 0}
+.rl-row input{flex:1;min-width:170px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg);font:inherit;font-size:13.5px;font-family:var(--sans)}
+.rl-row input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.rl-go{background:var(--accent);color:#fff;border:none;border-radius:7px;padding:8px 16px;font:inherit;font-size:13px;font-family:var(--sans);font-weight:600;cursor:pointer}
+.rl-mini{background:none;border:1px solid var(--line);color:var(--fg-dim);border-radius:6px;padding:5px 10px;font:inherit;font-size:12px;font-family:var(--sans);cursor:pointer}
+.rl-mini:hover{color:var(--fg);border-color:var(--fg-dim)}
+.rl-mini.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.rl-card{border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin:8px 0;font-family:var(--sans);display:flex;gap:11px;align-items:flex-start}
+.rl-card.done{opacity:.5}
+.rl-card.done .rl-t{text-decoration:line-through}
+.rl-tick{flex-shrink:0;width:17px;height:17px;margin-top:2px;border:1.5px solid var(--line);border-radius:50%;background:none;cursor:pointer;padding:0;line-height:1;color:var(--ok);font-size:11px}
+.rl-tick:hover{border-color:var(--ok)}
+.rl-card.done .rl-tick{background:var(--ok);border-color:var(--ok);color:#fff}
+.rl-body{flex:1;min-width:0}
+.rl-t{font-size:14px;font-weight:600;line-height:1.35;color:var(--fg);text-decoration:none;display:block;word-break:break-word}
+.rl-t:hover{color:var(--accent)}
+.rl-meta{font-size:11.5px;color:var(--fg-dim);margin-top:3px;font-family:var(--mono)}
+.rl-note{font-size:12.5px;color:var(--fg-dim);margin-top:5px;font-style:italic}
+.rl-x{flex-shrink:0;background:none;border:none;color:var(--fg-dim);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px;border-radius:5px}
+.rl-x:hover{color:var(--accent);background:var(--bg-sunk)}
+.rl-empty{color:var(--fg-dim);font-family:var(--sans);font-size:14px;padding:22px 0;text-align:center}
+.rl-bm{display:inline-block;background:var(--accent-soft);border:1px dashed var(--accent);color:var(--accent);border-radius:8px;padding:7px 15px;font-family:var(--sans);font-size:13.5px;font-weight:600;text-decoration:none;cursor:grab}
+a.rl-plus{text-decoration:none;font-family:var(--sans);font-size:11px;font-weight:700;color:var(--fg-dim);border:1px solid var(--line);border-radius:5px;padding:0 5px;margin-left:5px;cursor:pointer;vertical-align:1px}
+a.rl-plus:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+a.rl-plus.added{color:var(--ok);border-color:var(--ok)}
 sup.fn a{text-decoration:none;font-size:.7em;padding:0 1px}
 #pager{display:flex;gap:10px;padding:0 34px 50px;max-width:78ch}
 #pager a{flex:1;border:1px solid var(--line);border-radius:9px;padding:10px 13px;text-decoration:none;color:var(--fg);font-family:var(--sans)}
@@ -165,7 +192,8 @@ let DOCS = [], cur = null, fullIndexed = false;
 
 /* ---------------- file list ---------------- */
 const META = [
-  ['README.md','README','meta'], ['REVIEW.md','REVIEW — punch list','meta'],
+  ['README.md','README','meta'], ['reading-list.md','Reading list','meta'],
+  ['REVIEW.md','REVIEW — punch list','meta'],
   ['CONVENTIONS.md','CONVENTIONS','meta'], ['METADATA_SCHEMA.md','METADATA_SCHEMA','meta'],
   ['CHANGELOG.md','CHANGELOG','meta'], ['glossary.md','glossary (canonical)','meta'],
   ['curriculum/roadmap.md','Roadmap','meta'], ['curriculum/dependency-graph.md','Dependency graph','meta'],
@@ -184,7 +212,7 @@ const GROUPS = {
 
 async function boot(){
   let man = '';
-  try { man = await (await fetch(BASE+'manifest.yaml')).text(); }
+  try { man = await (await fetch(BASE+'manifest.yaml',{cache:'no-store'})).text(); }
   catch(e){ return fail('Cannot read manifest.yaml — is the local server running from the repo root?'); }
 
   const re = /- id: (\S+)\s*\n\s+path: (\S+)\s*\n\s+module: (\S+)\s*\n\s+prerequisites: (\[[^\]]*\])\s*\n\s+status: (\S+)/g;
@@ -201,7 +229,8 @@ async function boot(){
   // which matters on a hosted deploy. Fall back to probing if it's absent.
   let sizes = null;
   try{
-    const r = await fetch(BASE+'tutor/files.json');
+    // no-store: a cached index makes newly added files look "not written yet"
+    const r = await fetch(BASE+'tutor/files.json',{cache:'no-store'});
     if(r.ok) sizes = await r.json();
   }catch(e){}
 
@@ -218,6 +247,22 @@ async function boot(){
 
   const w = DOCS.filter(d=>d.exists).length;
   $('#stat').textContent = `${w} readable`;
+
+  // virtual doc: the personal queue, backed by localStorage rather than a file
+  DOCS.unshift({id:'', path:RL_PATH, group:'meta', status:'', title:'Read Later',
+                prereqs:[], exists:true, readlater:true});
+  rlSyncNavTitle();
+
+  // ?add=<url>&title=<t> — the bookmarklet capture hook
+  const qs = new URLSearchParams(location.search);
+  const incoming = qs.get('add');
+  if(incoming){
+    const res = rlAdd(incoming, qs.get('title')||'');
+    history.replaceState(null,'',location.pathname);   // don't re-add on refresh
+    renderNav();
+    return open(RL_PATH, res==='dup' ? 'Already in your queue.' : 'Saved to Read Later.');
+  }
+
   renderNav();
   const start = location.hash.slice(1);
   open(DOCS.find(d=>d.path===start && d.exists) ? start : 'README.md');
@@ -249,13 +294,205 @@ function renderNav(filter=''){
   $('#qcount').textContent = f ? `${shown} match` : '';
 }
 
+/* ---------------- read later ----------------
+   A personal queue kept in localStorage, so it works on a static host with no
+   backend. That means it is per-browser: use Export/Import to move it between
+   devices, or promote anything durable into reading-list.md.                 */
+const RL_KEY = 'ai-eng-readlater', RL_PATH = '@readlater';
+let rlFilter = 'unread';
+
+function rlLoad(){
+  try{ const d = JSON.parse(localStorage.getItem(RL_KEY)||'{}'); return Array.isArray(d.items)?d.items:[]; }
+  catch(e){ return []; }
+}
+function rlStore(items){
+  try{ localStorage.setItem(RL_KEY, JSON.stringify({v:1, items})); }
+  catch(e){ alert('Could not save — browser storage may be full or blocked.'); }
+  rlSyncNavTitle();
+}
+function rlSyncNavTitle(){
+  const d = DOCS.find(x=>x.path===RL_PATH); if(!d) return;
+  const n = rlLoad().filter(i=>!i.read).length;
+  d.title = 'Read Later' + (n ? ` · ${n}` : '');
+}
+function rlNameFromUrl(u){
+  try{
+    const x = new URL(u), host = x.hostname.replace(/^www\./,'');
+    const last = x.pathname.split('/').filter(Boolean).pop() || '';
+    if(!last) return host;
+    const name = last.replace(/\.(pdf|html?|php)$/i,'').replace(/[-_]+/g,' ').slice(0,140);
+    // bare ids (arxiv numbers, hashes) say nothing on their own — qualify them
+    return /[a-z]{3}/i.test(name) ? name : `${host} ${name}`;
+  }catch(e){ return u; }
+}
+function rlHost(u){ try{ return new URL(u).hostname.replace(/^www\./,''); }catch(e){ return ''; } }
+function rlAdd(url, title, note){
+  url = (url||'').trim(); if(!url) return 'empty';
+  if(!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = 'https://' + url;
+  const items = rlLoad();
+  if(items.some(i => i.url === url)) return 'dup';
+  items.unshift({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                  url, title:(title||'').trim() || rlNameFromUrl(url),
+                  note:(note||'').trim(), added:new Date().toISOString(), read:false });
+  rlStore(items); return 'ok';
+}
+function rlBookmarklet(){
+  const base = location.origin + location.pathname;
+  return "javascript:(function(){window.open("
+       + JSON.stringify(base + '?add=')
+       + "+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'_blank');})()";
+}
+
+function renderReadLater(flash){
+  $('#crumb').textContent = 'read later  ·  saved in this browser';
+  const items = rlLoad();
+  $('#badges').innerHTML = `<span class="badge">${items.length} saved</span>`
+    + `<span class="badge b-evolving">${items.filter(i=>!i.read).length} unread</span>`;
+  $('#toclist').innerHTML = ''; $('#pager').innerHTML = '';
+
+  $('#content').innerHTML = `
+    <h1>Read Later</h1>
+    ${flash ? `<blockquote><p><strong>${esc(flash)}</strong></p></blockquote>` : ''}
+    <p>Your personal queue. Paste anything you want to come back to — it saves in this
+    browser, no account and no server involved. For the curated, version-controlled
+    list of papers, see <a href="#reading-list.md">Reading list</a>.</p>
+
+    <div class="rl-row">
+      <input id="rl-url" type="url" placeholder="Paste a URL…" autocomplete="off">
+      <input id="rl-title" placeholder="Title (optional)" autocomplete="off">
+      <button class="rl-go" id="rl-go">Add</button>
+    </div>
+
+    <div class="rl-row">
+      <button class="rl-mini" data-f="unread">Unread</button>
+      <button class="rl-mini" data-f="read">Read</button>
+      <button class="rl-mini" data-f="all">All</button>
+      <input id="rl-q" placeholder="filter…" autocomplete="off">
+      <button class="rl-mini" id="rl-exp">Export</button>
+      <button class="rl-mini" id="rl-imp">Import</button>
+    </div>
+
+    <div id="rl-list"></div>
+
+    <h2>Capture from anywhere</h2>
+    <p>Drag this to your bookmarks bar. Click it on any article and the link lands here,
+    title and all:</p>
+    <p><a class="rl-bm" id="rl-bmk">+ Read Later</a></p>
+    <p><em class="cap">Because the queue lives in your browser's storage, it does not sync
+    across devices. Export writes a JSON file you can import elsewhere; anything worth
+    keeping permanently belongs in <code>reading-list.md</code>, which is in git.</em></p>`;
+
+  // javascript: href set as an attribute — innerHTML would be stripped by some browsers
+  $('#rl-bmk').setAttribute('href', rlBookmarklet());
+
+  const add = () => {
+    const u = $('#rl-url'), t = $('#rl-title'), r = rlAdd(u.value, t.value);
+    if(r === 'empty') return u.focus();
+    if(r === 'dup'){ u.select(); return flashNote('Already saved.'); }
+    u.value = ''; t.value = ''; u.focus();
+    $('#badges').innerHTML = `<span class="badge">${rlLoad().length} saved</span>`
+      + `<span class="badge b-evolving">${rlLoad().filter(i=>!i.read).length} unread</span>`;
+    renderNav($('#q').value); rlRenderList();
+  };
+  $('#rl-go').onclick = add;
+  $('#rl-url').onkeydown = e => { if(e.key==='Enter') add(); };
+  $('#rl-title').onkeydown = e => { if(e.key==='Enter') add(); };
+  $('#rl-q').oninput = rlRenderList;
+  $('#content').querySelectorAll('[data-f]').forEach(b => {
+    b.onclick = () => { rlFilter = b.dataset.f; rlRenderList(); };
+  });
+  $('#rl-exp').onclick = () => {
+    const blob = new Blob([JSON.stringify({v:1, items:rlLoad()}, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'read-later.json'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  };
+  $('#rl-imp').onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'application/json,.json';
+    inp.onchange = () => {
+      const f = inp.files[0]; if(!f) return;
+      const fr = new FileReader();
+      fr.onload = () => {
+        try{
+          const d = JSON.parse(fr.result);
+          const incoming = Array.isArray(d) ? d : (d.items||[]);
+          const have = rlLoad(), seen = new Set(have.map(i=>i.url));
+          let n = 0;
+          incoming.forEach(i => { if(i && i.url && !seen.has(i.url)){ have.push(i); seen.add(i.url); n++; } });
+          rlStore(have); renderNav($('#q').value); renderReadLater(`Imported ${n} new link${n===1?'':'s'}.`);
+        }catch(e){ alert('That file is not a valid Read Later export.'); }
+      };
+      fr.readAsText(f);
+    };
+    inp.click();
+  };
+  rlRenderList();
+}
+
+function rlRenderList(){
+  const q = ($('#rl-q')?.value || '').toLowerCase().trim();
+  $('#content').querySelectorAll('[data-f]').forEach(b =>
+    b.classList.toggle('on', b.dataset.f === rlFilter));
+
+  const items = rlLoad().filter(i =>
+    (rlFilter === 'all' || (rlFilter === 'read' ? i.read : !i.read)) &&
+    (!q || (i.title + ' ' + i.url + ' ' + (i.note||'')).toLowerCase().includes(q)));
+
+  const box = $('#rl-list');
+  if(!items.length){
+    box.innerHTML = `<div class="rl-empty">${
+      rlFilter === 'read' ? 'Nothing marked read yet.'
+      : q ? 'No matches.'
+      : 'Queue is empty — paste a URL above, or add one from the <a href="#reading-list.md">Reading list</a>.'}</div>`;
+    return;
+  }
+  box.innerHTML = items.map(i => `
+    <div class="rl-card${i.read?' done':''}" data-id="${i.id}">
+      <button class="rl-tick" title="${i.read?'Mark unread':'Mark read'}">${i.read?'✓':''}</button>
+      <div class="rl-body">
+        <a class="rl-t" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">${esc(i.title)}</a>
+        <div class="rl-meta">${esc(rlHost(i.url))} · ${esc((i.added||'').slice(0,10))}</div>
+        ${i.note ? `<div class="rl-note">${esc(i.note)}</div>` : ''}
+      </div>
+      <button class="rl-x" title="Remove">×</button>
+    </div>`).join('');
+
+  box.querySelectorAll('.rl-card').forEach(card => {
+    const id = card.dataset.id;
+    card.querySelector('.rl-tick').onclick = () => {
+      const all = rlLoad(), it = all.find(x=>x.id===id);
+      if(it){ it.read = !it.read; it.readAt = it.read ? new Date().toISOString() : null; }
+      rlStore(all); renderNav($('#q').value);
+      $('#badges').innerHTML = `<span class="badge">${all.length} saved</span>`
+        + `<span class="badge b-evolving">${all.filter(x=>!x.read).length} unread</span>`;
+      rlRenderList();
+    };
+    card.querySelector('.rl-x').onclick = () => {
+      const all = rlLoad().filter(x=>x.id!==id);
+      rlStore(all); renderNav($('#q').value);
+      $('#badges').innerHTML = `<span class="badge">${all.length} saved</span>`
+        + `<span class="badge b-evolving">${all.filter(x=>!x.read).length} unread</span>`;
+      rlRenderList();
+    };
+  });
+}
+
+function flashNote(msg){
+  const el = $('#crumb'), old = el.textContent;
+  el.textContent = msg;
+  setTimeout(()=>{ el.textContent = old; }, 1600);
+}
+
 /* ---------------- open a doc ---------------- */
-async function open(path){
+async function open(path, flash){
   const d = DOCS.find(x=>x.path===path);
   if(!d) return fail('Unknown file: '+path);
   cur = d; location.hash = path;
   renderNav($('#q').value);
 
+  if(d.readlater){ document.title = 'Read Later — AI Engineering'; return renderReadLater(flash); }
   if(!d.exists) return pending(d);
 
   let raw = cache.get(path);
@@ -390,6 +627,23 @@ function decorate(path){
     const p = em.parentElement, nx = p.nextElementSibling;
     if(nx && (nx.classList.contains('mermaid') || nx.tagName==='TABLE' || nx.tagName==='PRE')) p.classList.add('capwrap'), em.classList.add('cap');
   });
+  // on the curated list only, give every external link a one-click "send to queue"
+  if(path === 'reading-list.md'){
+    root.querySelectorAll('a[href^="http"]').forEach(a=>{
+      const btn = document.createElement('a');
+      btn.className = 'rl-plus'; btn.textContent = '+';
+      btn.title = 'Save to Read Later';
+      btn.onclick = e => {
+        e.preventDefault();
+        const r = rlAdd(a.href, a.textContent);
+        btn.classList.add('added');
+        btn.textContent = r === 'dup' ? '✓' : '✓';
+        btn.title = r === 'dup' ? 'Already in your queue' : 'Saved';
+        renderNav($('#q').value);
+      };
+      a.insertAdjacentElement('afterend', btn);
+    });
+  }
   // internal .md links → in-app nav
   root.querySelectorAll('a[href]').forEach(a=>{
     const href = a.getAttribute('href');

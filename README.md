@@ -52,6 +52,15 @@ Opens a local reader UI (`tutor/reader.html`) with a grouped sidebar, full-text 
 
 The same reader is published at [https://naman-shrimali.github.io/ai-engineering-curriculum/](https://naman-shrimali.github.io/ai-engineering-curriculum/); see [DEPLOY.md](DEPLOY.md) to redeploy.
 
+### Reading queue
+
+Two places to park things you want to read:
+
+- **[reading-list.md](reading-list.md)** — curated primary sources (mostly papers), grouped by the chapter each one reinforces. Version-controlled, so it's shared and reviewable. In the reader, every link has a **+** to push it into your queue.
+- **Read Later** — your personal queue, in the reader's sidebar. Paste any URL, mark things read, filter and search. It's stored in your browser's localStorage (no backend on a static host), so it's per-device — use **Export/Import** to move it, and promote anything durable into `reading-list.md`.
+
+To capture links from elsewhere, drag the bookmarklet on the Read Later page to your bookmarks bar; clicking it on any article files that page into the queue with its title.
+
 ## How to navigate
 
 1. **Start at [curriculum/roadmap.md](curriculum/roadmap.md).** It lists every chapter with objectives, prerequisites, hours, and difficulty.
