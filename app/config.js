@@ -1,16 +1,18 @@
-/* Firebase web-app config. Leave `null` to run in local-only mode (progress
-   in this browser). To enable sign-in and cross-device sync on Google Cloud,
-   follow docs/SETUP-GCP-AUTH.md and paste the config object here. These
-   values are public by design; access control lives in firestore.rules. */
-export const firebaseConfig = null;
+/* Firebase web-app config for this deployment.
 
-/* Example:
+   These values are public by design: they identify which Firebase project the
+   browser should talk to, not a credential. Anyone can read them from the
+   shipped JavaScript, and that is expected — the access boundary is
+   firestore.rules, which checks request.auth.uid server-side. See
+   docs/SETUP-GCP-AUTH.md.
+
+   Set this back to `null` to run the app in local-only mode, where progress
+   stays in the browser's localStorage and no account is involved. */
 export const firebaseConfig = {
-  apiKey: "AIza...",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef",
+  apiKey: "AIzaSyAaDQ16SKEM81r3FZ4MLNpxIp5FCUkTGmI",
+  authDomain: "token0-67858.firebaseapp.com",
+  projectId: "token0-67858",
+  storageBucket: "token0-67858.firebasestorage.app",
+  messagingSenderId: "303229841487",
+  appId: "1:303229841487:web:d13c5707d891160d87fa3a",
 };
-*/

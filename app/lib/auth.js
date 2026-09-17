@@ -5,7 +5,7 @@ import { firebaseConfig } from '../config.js';
 import { $, esc, ico, toast, modal } from './ui.js';
 import * as store from './store.js';
 
-let auth = null, db = null, fs = null, fa = null, u = null, sync = 'off';
+let auth = null, db = null, fs = null, fa = null, u = null, sync = 'off', syncErrShown = false;
 const listeners = new Set();
 export const configured = () => !!firebaseConfig;
 export const user = () => u;
@@ -23,7 +23,7 @@ export async function init() {
     A.getRedirectResult(auth).catch(e => { if (e.code !== 'auth/no-auth-event') toast(friendly(e)); });
     A.onAuthStateChanged(auth, async usr => {
       u = usr;
-      if (usr) { await pull(usr); store.attachCloud({ push }); } else { store.detachCloud(); sync = 'off'; }
+      if (usr) { syncErrShown = false; await pull(usr); store.attachCloud({ push }); } else { store.detachCloud(); sync = 'off'; }
       emit();
     });
   } catch (e) { console.warn('Firebase failed to load', e); sync = 'off'; widget(); }
@@ -39,7 +39,7 @@ async function pull(usr) {
     store.replace(merged);
     await push(merged, usr);
     sync = 'ok'; toast(remote ? 'Progress synced' : 'Cloud profile created');
-  } catch (e) { sync = 'err'; toast(friendly(e), 3000); }
+  } catch (e) { sync = 'err'; reportSyncError(e); }
   widget();
 }
 async function push(state, usr = u) {
@@ -52,20 +52,34 @@ async function push(state, usr = u) {
       settings: state.settings, activity: state.activity, lastOpened: state.lastOpened || null, updatedAt: fs.serverTimestamp(),
     });
     sync = 'ok';
-  } catch (e) { sync = 'err'; console.error(e); toast(friendly(e), 3000); }
+  } catch (e) { sync = 'err'; reportSyncError(e); }
   widget();
+}
+
+/** Surface a sync failure once per session, not on every debounced write. */
+function reportSyncError(e) {
+  console.error('[sync]', e);
+  if (syncErrShown) return;
+  syncErrShown = true;
+  toast(friendly(e), 6000);
 }
 
 function friendly(e) {
   const c = e?.code || '';
+  const m = e?.message || '';
   if (c.includes('unauthorized-domain')) return 'This domain is not authorized for sign-in yet (Firebase console → Authentication → Settings → Authorized domains).';
-  if (c.includes('permission-denied')) return 'Firestore denied the write: deploy firestore.rules to your project.';
+  // A project with no Firestore database, or the API switched off, also answers
+  // permission-denied — but "deploy your rules" is the wrong fix for it.
+  if (/has not been used|SERVICE_DISABLED|is disabled|does not exist/i.test(m))
+    return 'Cloud Firestore is not enabled on this Firebase project yet, so nothing syncs — your progress is still saved in this browser. See docs/SETUP-GCP-AUTH.md, step 4.';
+  if (c.includes('permission-denied')) return 'Firestore rejected the write: deploy firestore.rules to your project. Progress is still saved in this browser.';
+  if (c.includes('unavailable')) return 'Cannot reach Firestore right now — your progress is still saved in this browser.';
   if (c.includes('popup-closed')) return 'Sign-in window closed.';
   if (c.includes('wrong-password') || c.includes('invalid-credential')) return 'Wrong email or password.';
   if (c.includes('user-not-found')) return 'No account with that email — create one instead.';
   if (c.includes('email-already-in-use')) return 'That email already has an account — sign in instead.';
   if (c.includes('weak-password')) return 'Use a password of at least 6 characters.';
-  if (c.includes('network')) return 'Network error — you are still saving locally.';
+  if (c.includes('network')) return 'Network error — your progress is still saved in this browser.';
   return e?.message || 'Something went wrong.';
 }
 

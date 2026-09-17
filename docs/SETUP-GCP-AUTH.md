@@ -9,7 +9,26 @@ Both need to be registered as authorized domains (step 4 below) for sign-in to w
 
 ## What you're setting up, in one paragraph
 
+The Firebase SDK itself is vendored into `app/vendor/firebase.js` (built by `scripts/vendor.sh`), so no third-party CDN is involved; the browser still talks to Google's own API endpoints at runtime, as any Firebase client must.
+
 The site is static — it's served from GitHub Pages with no backend server. To let people sign in and keep their progress across devices, we use two free Google Cloud services directly from the browser: **Firebase Authentication** handles sign-in (Google, GitHub, email/password), and **Cloud Firestore** stores each signed-in user's progress as one document. There is no server code anywhere — the browser talks to Firebase/Firestore directly, and Firestore's security rules (in `firestore.rules`) are what stop one user from reading or writing another user's data.
+
+## Status of this deployment
+
+The live site is wired to Firebase project `token0-67858`. What is done and what is not:
+
+| Step | State |
+|---|---|
+| Project created, web app registered, config in `app/config.js` | done |
+| Authorized domains (`localhost`, `naman-shrimali.github.io`) | done |
+| Email/password provider | enabled (verified against the live API) |
+| Google / GitHub providers | enable and verify in the console |
+| **Cloud Firestore database** | **not created — sign-in works, but nothing syncs yet** |
+| `firestore.rules` published | blocked on the database existing |
+
+Until Firestore is created (step 4 below), signed-in users still accumulate progress in their own browser; it simply does not follow them across devices. The app says so rather than failing silently.
+
+> **Warning:** `token0-67858` appears to be an existing project used by another app — it carries a Realtime Database URL and `token0-67858.web.app` hosting domains. Publishing `firestore.rules` **replaces that project's current Firestore rules**, and signed-in users share one user pool across every app in the project. Confirm nothing else depends on those rules before publishing, or create a dedicated project for this site.
 
 ## Local-only mode (no setup required)
 
