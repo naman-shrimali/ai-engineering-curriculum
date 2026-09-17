@@ -1,0 +1,61 @@
+rules_version = '2';
+
+// Firestore security rules for the AI Engineering Curriculum app's per-user
+// progress store. One document per signed-in user at users/{uid}. See
+// docs/SETUP-GCP-AUTH.md for the full setup guide and the data model.
+//
+// Model: a user can read and write ONLY their own document (request.auth.uid
+// must equal the {uid} in the path). Everything else is denied by default,
+// because Firestore rules deny anything not explicitly allowed. There is no
+// server; these rules are the entire access-control layer.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // The set of top-level fields the app is allowed to write. Keep this in
+    // sync with the data model in docs/SETUP-GCP-AUTH.md.
+    function hasOnlyAllowedKeys() {
+      return request.resource.data.keys().hasOnly([
+        'v', 'profile', 'progress', 'cards', 'readlater', 'track',
+        'settings', 'activity', 'lastOpened', 'updatedAt'
+      ]);
+    }
+
+    // If the written document sets profile.email, it must match the signed-in
+    // user's own token email (prevents writing someone else's email into your
+    // own profile). Absent is fine too (email is optional in the profile map).
+    function emailMatchesAuthOrAbsent() {
+      return !('profile' in request.resource.data)
+          || !('email' in request.resource.data.profile)
+          || request.resource.data.profile.email == request.auth.token.email;
+    }
+
+    match /users/{uid} {
+
+      // Read: only the owner of this document.
+      allow read: if isOwner(uid);
+
+      // Create and update: only the owner, and only with a document shaped
+      // like the app's data model (see docs/SETUP-GCP-AUTH.md). This is a
+      // basic guard against a compromised or buggy client writing arbitrary
+      // fields into another shape, not a full schema validator.
+      allow create, update: if isOwner(uid)
+                             && hasOnlyAllowedKeys()
+                             && emailMatchesAuthOrAbsent();
+
+      // Nothing else is allowed on this document (e.g. no delete from the
+      // client; clear fields by writing an update instead).
+      allow delete: if false;
+    }
+
+    // Deny everything outside users/{uid}. This line is redundant with
+    // Firestore's default-deny behavior but is kept explicit on purpose, so
+    // the intent is obvious to the next person reading this file.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
