@@ -23,10 +23,12 @@ The live site is wired to Firebase project `token0-67858`. What is done and what
 | Authorized domains (`localhost`, `naman-shrimali.github.io`) | done |
 | Email/password provider | enabled (verified against the live API) |
 | Google / GitHub providers | enable and verify in the console |
-| **Cloud Firestore database** | **not created — sign-in works, but nothing syncs yet** |
-| `firestore.rules` published | blocked on the database existing |
+| Cloud Firestore database | created (verified 2026-09-17) |
+| **`firestore.rules` published** | **no — the live rules still deny an owner's write to their own document** |
 
-Until Firestore is created (step 4 below), signed-in users still accumulate progress in their own browser; it simply does not follow them across devices. The app says so rather than failing silently.
+Verified on 2026-09-17 with a throwaway account, since deployed rules cannot be read from a client: a signed-in user writing the app's exact document shape to their own `users/{uid}` path was denied. `firestore.rules` permits that write, so what is live is still the database's default production deny-all. Note that an unauthenticated probe cannot tell the two apart — every anonymous read and write is refused either way — so the owner-write path is the only meaningful test.
+
+Until the rules are published, signed-in users accumulate progress in their own browser and it does not follow them across devices. The app reports this rather than failing silently. Publish via step 6 below, then confirm on [Firestore → Rules](https://console.firebase.google.com/project/token0-67858/firestore/rules) that the editor shows `service cloud.firestore` and a `match /users/{uid}` block — this project also has a Realtime Database whose rules tab looks nearly identical, and pasting there leaves Firestore untouched.
 
 > **Warning:** `token0-67858` appears to be an existing project used by another app — it carries a Realtime Database URL and `token0-67858.web.app` hosting domains. Publishing `firestore.rules` **replaces that project's current Firestore rules**, and signed-in users share one user pool across every app in the project. Confirm nothing else depends on those rules before publishing, or create a dedicated project for this site.
 
