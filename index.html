@@ -1,8 +1,55 @@
 <!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<title>AI Engineering — Reader</title>
-<meta http-equiv="refresh" content="0; url=tutor/reader.html">
-<link rel="canonical" href="tutor/reader.html">
-<p style="font-family:system-ui;padding:2rem">
-  Opening the reader… <a href="tutor/reader.html">tutor/reader.html</a>
-</p>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Engineering Curriculum</title>
+<meta name="description" content="An interactive, production-grade AI engineering curriculum: 61 chapters, live diagrams, a prerequisite map, spaced-repetition flashcards, interview practice and tracked progress.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1116'/%3E%3Ccircle cx='11' cy='11' r='3.2' fill='%233aa6a0'/%3E%3Ccircle cx='21' cy='11' r='3.2' fill='%234f8ef7'/%3E%3Ccircle cx='16' cy='21' r='3.2' fill='%23e8865a'/%3E%3Cpath d='M11 11h10M11 11l5 10M21 11l-5 10' stroke='%23e6e9ef' stroke-width='1.4' opacity='.7'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app/styles.css">
+<script>
+  // theme before first paint, so there is no flash
+  try{const t=localStorage.getItem('aiec.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "marked": "./app/vendor/marked.js",
+    "mermaid": "./app/vendor/mermaid.js",
+    "d3": "./app/vendor/d3.js",
+    "firebase/app": "./app/vendor/firebase.js",
+    "firebase/auth": "./app/vendor/firebase.js",
+    "firebase/firestore": "./app/vendor/firebase.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app" class="app">
+  <aside id="rail" class="rail" aria-label="Primary">
+    <a class="brand" href="#/" aria-label="AI Engineering Curriculum home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="11" r="3.2" class="m1"/><circle cx="21" cy="11" r="3.2" class="m2"/><circle cx="16" cy="21" r="3.2" class="m3"/><path d="M11 11h10M11 11l5 10M21 11l-5 10"/></svg>
+      <span class="brand-text"><b>AI Engineering</b><small>Curriculum</small></span>
+    </a>
+    <nav class="nav" id="nav"></nav>
+    <div class="rail-foot">
+      <button class="rail-btn" id="btn-search" type="button" title="Search (⌘K)"><span class="ico" data-icon="search"></span><span class="lbl">Search</span><kbd>⌘K</kbd></button>
+      <button class="rail-btn" id="btn-theme" type="button" title="Toggle theme"><span class="ico" data-icon="theme"></span><span class="lbl">Theme</span></button>
+      <div id="account" class="account"></div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <main id="main" class="main" tabindex="-1">
+    <div id="view" class="view"><div class="boot"><div class="spinner"></div><p>Loading the curriculum…</p></div></div>
+  </main>
+  <nav class="tabbar" id="tabbar" aria-label="Mobile"></nav>
+  <div id="palette" class="palette" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+<noscript><p style="padding:2rem;font-family:system-ui">This app needs JavaScript. The plain Markdown is always readable on <a href="https://github.com/naman-shrimali/ai-engineering-curriculum">GitHub</a>, and the classic reader is at <a href="tutor/reader.html">tutor/reader.html</a>.</p></noscript>
+<script type="module" src="app/main.js"></script>
+</body>
+</html>
