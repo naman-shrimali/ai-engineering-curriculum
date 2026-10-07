@@ -49,6 +49,7 @@ async function home(el) {
           <div class="cta">
             ${lead ? `<a class="btn primary" href="#/c/${lead.id}">${ico('play')} ${G.sectionProgress(lead.id) > 0 ? 'Continue reading' : 'Start chapter'}</a>` : ''}
             <a class="btn" href="#/map">${ico('map')} View the map</a>
+            <a class="btn ghost" href="#/labs">${ico('code')} Coding labs${store.labsPassed() ? ` · ${store.labsPassed()} passed` : ''}</a>
             ${due ? `<a class="btn ghost" href="#/cards">${due} cards due</a>` : ''}
           </div>
         </div>

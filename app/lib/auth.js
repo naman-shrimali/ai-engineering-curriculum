@@ -49,7 +49,7 @@ async function push(state, usr = u) {
     await fs.setDoc(ref(usr.uid), {
       v: 1, profile: { displayName: usr.displayName || '', email: usr.email || '', photoURL: usr.photoURL || '' },
       progress: state.progress, cards: state.cards, readlater: state.readlater, track: state.track || null,
-      settings: state.settings, activity: state.activity, lastOpened: state.lastOpened || null, updatedAt: fs.serverTimestamp(),
+      settings: state.settings, activity: state.activity, lastOpened: state.lastOpened || null, labs: state.labs || {}, updatedAt: fs.serverTimestamp(),
     });
     sync = 'ok';
   } catch (e) { sync = 'err'; reportSyncError(e); }

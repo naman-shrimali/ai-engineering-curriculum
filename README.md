@@ -15,7 +15,8 @@ If you are a researcher, this repo is not for you. The center of gravity is the 
 ```
 README.md               ← you are here
 index.html, app/        ← the interactive learning app (renders the Markdown live; no build step)
-scripts/                ← build-content.py (content index), validate.py (schema checks), check-explorables.py, vendor.sh
+labs/                   ← coding labs: one folder per lab (brief, starter, solution, tests) + harness.py
+scripts/                ← build-content.py (content index), validate.py (schema checks), check-explorables.py, build-labs.py, vendor.sh
 docs/                   ← SETUP-GCP-AUTH.md: enabling sign-in + progress sync on Google Cloud
 CONVENTIONS.md          ← authoring rules: structure, naming, citations, versioning
 METADATA_SCHEMA.md      ← YAML frontmatter spec (designed for RAG ingestion)
@@ -56,6 +57,7 @@ What it adds on top of reading:
 - **Chapter reader** — reading-progress bar, sections that mark themselves read, interactive diagrams (below), glossary hover cards, a mind map built from the chapter's own headings, and the derived sections turned into tools: *Check your understanding* becomes a self-graded quiz, *Interview questions* an attempt-then-reveal drill, *Flashcards* flip cards, *Exercises* a checklist.
 - **Interactive diagrams** — every Mermaid diagram becomes something you operate, not just look at. Hover or tap a node to trace what feeds it and what it feeds, and pin it to see its connections and the sentences in the chapter that discuss it. *Decide* walks a decision tree question by question to its outcome; *Step through* follows a flow branch by branch; *Simulate* runs a state machine transition by transition; sequence diagrams *play* message by message; the continuous-batching timeline gets a playhead. Long pipelines are re-laid out to fit a reading column (one click restores the authored layout). The **Diagrams** hub (`#/diagrams`) lists all 66 by kind.
 - **Explorables** — five small simulations placed beside the text they illustrate: vector similarity and normalization (fnd-03), a temperature/top-k/top-p/min-p sampling lab (fnd-08), IVF search with live recall@k and the cell-boundary miss (rag-02), a retrieval-metrics lab with reranking (rag-07), and LoRA's trainable-parameter footprint (ftn-02).
+- **Coding labs** — ten hands-on labs (`#/labs`) where you implement what the chapters teach, in Python, in the browser: similarity metrics, temperature, top-k/top-p/min-p, IVF search with recall@k, retrieval metrics, tool-call validation and authorization, the minimal agent loop, a circuit breaker with a fallback chain, a routing cascade, and LoRA. A real code editor, 88 tests graded instantly by CPython compiled to WebAssembly (Pyodide) in a background worker, a time limit that stops runaway loops, your code saved and synced with your progress, and a card in each chapter's section linking to its lab.
 - **Spaced repetition** — all 576 chapter flashcards in one SM-2 scheduler, filterable by module or chapter.
 - **Practice** — self-tests, interview drills and misconception checks per chapter, or a mixed drill across everything you have started.
 - **Dashboard** — track choice (fast / full / systems / product), what to read next computed from the prerequisite DAG, streaks and an activity heatmap.
@@ -74,12 +76,13 @@ Browsers block `file://` fetches, so it needs the local server. The classic sing
 
 `scripts/build-content.py` compiles `app/data/content.json` — the *structure* of the corpus (frontmatter, section outline, flashcards, questions, diagram sources, glossary, concept graph, tracks) — by parsing the Markdown; every string in it is copied, never rewritten. CI (`.github/workflows/ci.yml`) fails if that index is stale or if any chapter violates [METADATA_SCHEMA.md](METADATA_SCHEMA.md) (`scripts/validate.py`).
 
-Diagrams are still drawn by Mermaid from each chapter's own source; `app/lib/diagrams.js` asks Mermaid's parser for its model of that same source and builds every interaction from it, so node labels, branch answers, transitions, messages and tasks are verbatim, structure is computed, and "in the text" excerpts are quoted sentences from the page. Explorables (`app/lib/explorables.js`) implement only definitions their chapter states and quote them; `scripts/check-explorables.py` (also in CI) fails if a quoted definition no longer appears verbatim in its chapter, so an edited chapter forces the simulation to be revisited. After editing content:
+Diagrams are still drawn by Mermaid from each chapter's own source; `app/lib/diagrams.js` asks Mermaid's parser for its model of that same source and builds every interaction from it, so node labels, branch answers, transitions, messages and tasks are verbatim, structure is computed, and "in the text" excerpts are quoted sentences from the page. Each coding lab (`labs/NN-name/`: brief, starter, reference solution, tests) is graded against its chapter's own definitions and worked exercises, and quotes the definitions it implements. `scripts/build-labs.py` compiles them into `app/data/labs.json` and, in CI, runs every reference solution through the same harness the browser uses (`labs/harness.py`), requires every starter to fail, and requires every quote to appear verbatim in its chapter. Explorables (`app/lib/explorables.js`) implement only definitions their chapter states and quote them; `scripts/check-explorables.py` (also in CI) fails if a quoted definition no longer appears verbatim in its chapter, so an edited chapter forces the simulation to be revisited. After editing content:
 
 ```bash
 python3 scripts/build-content.py   # refresh the index (read.sh does this too)
 python3 scripts/validate.py        # frontmatter, prerequisite DAG, footnotes, links
 python3 scripts/check-explorables.py  # explorables still quote their chapters verbatim
+python3 scripts/build-labs.py      # rebuild app/data/labs.json after editing a lab (CI runs --check)
 ```
 
 ### Reading queue

@@ -214,6 +214,7 @@ where `{uid}` is the Firebase Auth user ID (stable across sign-in providers if t
 | `settings` | map | UI preferences (prose typeface, etc.) |
 | `activity` | map | `YYYY-MM-DD` → count of learning actions that day (drives streaks and the activity heatmap) |
 | `lastOpened` | map | `{ id, at }` — the chapter to resume from |
+| `labs` | map | lab ID → `{ code, at, runs, best, total, passedAt }` — the learner's latest code for each coding lab (capped at 50 KB), run count, best score and when it first passed |
 | `updatedAt` | timestamp | last write time, for conflict/staleness checks |
 
 `firestore.rules` enforces that a write can only ever contain these keys (via `hasOnly`), as a guard against a bug or a compromised client writing something unexpected into a user's document.

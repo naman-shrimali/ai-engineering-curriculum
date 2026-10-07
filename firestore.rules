@@ -20,7 +20,7 @@ service cloud.firestore {
     function hasOnlyAllowedKeys() {
       return request.resource.data.keys().hasOnly([
         'v', 'profile', 'progress', 'cards', 'readlater', 'track',
-        'settings', 'activity', 'lastOpened', 'updatedAt'
+        'settings', 'activity', 'lastOpened', 'labs', 'updatedAt'
       ]);
     }
 

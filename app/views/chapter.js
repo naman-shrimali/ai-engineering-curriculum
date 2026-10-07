@@ -7,6 +7,7 @@ import * as G from '../lib/graph.js';
 import * as MD from '../lib/md.js';
 import { fetchMd } from './doc.js';
 import { mountExplorables } from '../lib/explorables.js';
+import { mountLabCards } from './labs.js';
 import { BASE, CONTENT, go } from '../main.js';
 import { mindmapSmall, mindmapModal } from '../lib/mindmap.js';
 
@@ -55,6 +56,7 @@ async function chapter(el, params, query) {
   transformDerived(art, c);
   MD.decorate(art, { onNavigate: id => go('#/c/' + id) });
   mountExplorables(art, c.id);
+  mountLabCards(art, c.id);
 
   /* ----- section tracking ----- */
   const h2s = $$('h2', art).filter(x => x.id !== 'sources-list');

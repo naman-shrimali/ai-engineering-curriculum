@@ -21,6 +21,7 @@ function blank() {
     activity: {},      // 'YYYY-MM-DD' -> count of learning actions
     settings: { prose: 'serif' },
     lastOpened: null,  // {id, at}
+    labs: {},          // labId -> {code, at, runs, best, total, passedAt}
   };
 }
 
@@ -93,6 +94,21 @@ export function setInterview(id, i, grade) { update(s => { ensure(s, id).intervi
 export function toggleExercise(id, i) {
   update(s => { const p = ensure(s, id); if (p.exercises[i]) delete p.exercises[i]; else p.exercises[i] = now(); });
 }
+/* coding labs */
+export function lab(id) { return state.labs?.[id] || null; }
+export function labSave(id, code) {
+  update(s => { s.labs ||= {}; const l = (s.labs[id] ||= { runs: 0, best: 0 }); l.code = String(code).slice(0, 50000); l.at = now(); }, { activity: false });
+}
+export function labResult(id, passed, total, code) {
+  update(s => {
+    s.labs ||= {}; const l = (s.labs[id] ||= { runs: 0, best: 0 });
+    l.runs = (l.runs || 0) + 1; l.best = Math.max(l.best || 0, passed); l.total = total; l.at = now();
+    if (code != null) l.code = String(code).slice(0, 50000);
+    if (passed === total && total > 0 && !l.passedAt) l.passedAt = now();
+  });
+}
+export function labsPassed() { return Object.values(state.labs || {}).filter(l => l.passedAt).length; }
+
 export function setTrack(t) { update(s => { s.track = t; }, { activity: false }); }
 export function setSetting(k, v) { update(s => { s.settings[k] = v; }, { activity: false }); }
 
@@ -138,6 +154,17 @@ function mergeMaps(a = {}, b = {}, deep = false) {
   }
   return out;
 }
+/** Labs: the newer entry's code wins; a pass, once earned on any device, is kept. */
+function mergeLabs(a = {}, b = {}) {
+  const out = { ...a };
+  for (const [k, v] of Object.entries(b)) {
+    const A = out[k];
+    if (!A) { out[k] = v; continue; }
+    const newer = (v.at || 0) >= (A.at || 0) ? v : A;
+    out[k] = { ...newer, runs: Math.max(A.runs || 0, v.runs || 0), best: Math.max(A.best || 0, v.best || 0), passedAt: A.passedAt || v.passedAt || null };
+  }
+  return out;
+}
 export function merge(local, remote) {
   if (!remote) return { ...local };
   const rl = [...(local.readlater || [])];
@@ -152,6 +179,7 @@ export function merge(local, remote) {
     activity: mergeMaps(local.activity, remote.activity),
     settings: { ...(remote.settings || {}), ...(local.settings || {}) },
     lastOpened: ts(remote.lastOpened) > ts(local.lastOpened) ? remote.lastOpened : local.lastOpened,
+    labs: mergeLabs(local.labs, remote.labs),
   };
 }
 
