@@ -1,8 +1,9 @@
-/* Markdown → HTML for chapters, plus interactive diagram behaviour.
+/* Markdown → HTML for chapters, plus glossary and diagram decoration.
    The .md files stay the single source of truth: this renders them live. */
 import { marked } from 'marked';
 import mermaid from 'mermaid';
 import { esc, $$, toast } from './ui.js';
+import { mountDiagrams } from './diagrams.js';
 
 let CONTENT = null, byPath = new Map(), byId = new Map();
 export function init(content) {
@@ -10,6 +11,8 @@ export function init(content) {
   for (const c of [...content.chapters, ...content.engineering, ...content.tutor]) { byPath.set(c.path, c); byId.set(c.id, c); }
   initMermaid();
 }
+
+export const chapterById = id => byId.get(id);
 
 /** Heading → anchor id. Mirrors scripts/build-content.py slug() exactly. */
 export function slug(s) {
@@ -112,8 +115,8 @@ export function decorate(root, { onNavigate } = {}) {
   $$('a.xref[data-mod]', root).forEach(a => a.style.setProperty('--mc', `var(--m-${a.dataset.mod})`));
   // glossary hover cards
   glossaryHover(root);
-  // diagrams
-  renderDiagrams(root, onNavigate);
+  // diagrams: rendered by Mermaid, made interactive from Mermaid's own parse of the same source
+  return mountDiagrams(root, { onNavigate, lookup: id => byId.get(id), article: root });
 }
 
 /* ---------------- glossary popovers ---------------- */
@@ -171,7 +174,7 @@ export function initMermaid() {
       lineColor: cssVar('--fg-3'), textColor: cssVar('--fg'), fontSize: '13px',
       clusterBkg: dark ? 'rgba(255,255,255,.03)' : 'rgba(0,0,0,.025)', clusterBorder: cssVar('--line-2'),
       edgeLabelBackground: cssVar('--bg-2'), nodeBorder: cssVar('--line-2'), mainBkg: dark ? '#1f2732' : '#eef1f5',
-      actorBkg: dark ? '#1f2732' : '#eef1f5', actorBorder: cssVar('--accent'), actorTextColor: cssVar('--fg'),
+      actorBkg: dark ? '#1f2732' : '#eef1f5', actorBorder: cssVar('--line-2'), actorTextColor: cssVar('--fg'), actorLineColor: cssVar('--line-2'),
       signalColor: cssVar('--fg-2'), signalTextColor: cssVar('--fg'), labelBoxBkgColor: dark ? '#26303d' : '#e4e8ee',
       noteBkgColor: dark ? '#2a2418' : '#fff6e8', noteTextColor: cssVar('--fg'), noteBorderColor: cssVar('--warn'),
       activationBkgColor: cssVar('--accent-soft'), activationBorderColor: cssVar('--accent'),
@@ -190,83 +193,6 @@ export function initMermaid() {
 export function isDark() {
   const t = document.documentElement.getAttribute('data-theme');
   return t ? t === 'dark' : matchMedia('(prefers-color-scheme:dark)').matches;
-}
-
-let seq = 0;
-export async function renderDiagrams(root, onNavigate) {
-  const blocks = $$('.mermaid-src', root);
-  for (const el of blocks) {
-    const src = el.dataset.src;
-    const kind = (src.trim().split(/\s+/)[0] || 'graph').replace('stateDiagram-v2', 'state').replace('sequenceDiagram', 'sequence');
-    const cap = el.previousElementSibling?.classList.contains('capwrap') ? el.previousElementSibling : null;
-    const box = document.createElement('figure'); box.className = 'diagram';
-    box.innerHTML = `<div class="dtools"><button type="button" data-z="-">−</button><button type="button" data-z="0">reset</button><button type="button" data-z="+">+</button><button type="button" data-full title="Fullscreen">⛶</button></div><div class="dwrap"></div>` +
-      `<figcaption class="dcap"><b>${esc(kind)}</b><span>${cap ? cap.textContent : 'Diagram'}</span><span class="dim" style="margin-left:auto">drag to pan · ⌘/ctrl + wheel to zoom</span></figcaption>`;
-    el.replaceWith(box); if (cap) cap.remove();
-    const wrap = box.querySelector('.dwrap');
-    try {
-      const { svg } = await mermaid.render('mm-' + (++seq), src);
-      wrap.innerHTML = svg;
-      const s = wrap.querySelector('svg');
-      s.removeAttribute('height'); s.style.maxWidth = 'none';
-      const vb = s.viewBox?.baseVal; const w = vb?.width || s.getBBox().width, hgt = vb?.height || s.getBBox().height;
-      s.setAttribute('width', w); s.setAttribute('height', hgt);
-      panzoom(box, wrap, s, w, hgt);
-      linkNodes(s, onNavigate);
-    } catch (e) {
-      box.classList.add('err'); wrap.innerHTML = `<pre style="margin:0;white-space:pre-wrap">${esc(src)}</pre>`;
-      box.querySelector('.dcap span').textContent = 'Diagram source (render failed)';
-    }
-  }
-}
-
-/** Nodes whose label contains a chapter id become links. */
-function linkNodes(svg, onNavigate) {
-  const rx = /\b([a-z]{3}-\d\d)\b/;
-  for (const g of $$('g.node, g.cluster', svg)) {
-    const m = g.textContent.match(rx); if (!m || !byId.has(m[1])) continue;
-    g.classList.add('xref'); g.setAttribute('role', 'link'); g.setAttribute('tabindex', '0');
-    const go = () => (onNavigate ? onNavigate(m[1]) : (location.hash = '#/c/' + m[1]));
-    g.addEventListener('click', e => { e.stopPropagation(); go(); });
-    g.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title'); title.textContent = 'Open ' + m[1]; g.prepend(title);
-  }
-}
-
-function panzoom(box, wrap, svg, w, h) {
-  let k = 1, tx = 0, ty = 0, drag = null, moved = false;
-  const fit = () => {
-    const W = wrap.clientWidth || box.clientWidth, H = box.classList.contains('full') ? wrap.clientHeight : Math.min(h, 640);
-    k = Math.min(1, (W - 24) / w, (H - 24) / h); if (!box.classList.contains('full')) k = Math.min(k, 1);
-    tx = Math.max(12, (W - w * k) / 2); ty = box.classList.contains('full') ? Math.max(12, (H - h * k) / 2) : 12;
-    wrap.style.height = box.classList.contains('full') ? '' : (Math.min(h * k, 640) + 24) + 'px';
-    apply();
-  };
-  const apply = () => { svg.style.transform = `translate(${tx}px,${ty}px) scale(${k})`; };
-  const zoom = (f, cx, cy) => {
-    const nk = Math.min(6, Math.max(.2, k * f)); const r = wrap.getBoundingClientRect();
-    cx = cx ?? r.width / 2; cy = cy ?? r.height / 2;
-    tx = cx - (cx - tx) * (nk / k); ty = cy - (cy - ty) * (nk / k); k = nk; apply();
-  };
-  box.querySelector('[data-z="+"]').onclick = () => zoom(1.25);
-  box.querySelector('[data-z="-"]').onclick = () => zoom(.8);
-  box.querySelector('[data-z="0"]').onclick = fit;
-  box.querySelector('[data-full]').onclick = () => {
-    const on = box.classList.toggle('full'); document.body.style.overflow = on ? 'hidden' : '';
-    box.querySelector('[data-full]').textContent = on ? '✕' : '⛶'; fit();
-  };
-  wrap.addEventListener('wheel', e => {
-    if (!(e.ctrlKey || e.metaKey || box.classList.contains('full'))) return;
-    e.preventDefault(); const r = wrap.getBoundingClientRect();
-    zoom(e.deltaY < 0 ? 1.12 : .89, e.clientX - r.left, e.clientY - r.top);
-  }, { passive: false });
-  wrap.addEventListener('pointerdown', e => { if (e.button) return; drag = { x: e.clientX - tx, y: e.clientY - ty }; moved = false; wrap.setPointerCapture(e.pointerId); });
-  wrap.addEventListener('pointermove', e => { if (!drag) return; tx = e.clientX - drag.x; ty = e.clientY - drag.y; moved = true; apply(); });
-  wrap.addEventListener('pointerup', () => { drag = null; });
-  wrap.addEventListener('click', e => { if (moved) e.stopPropagation(); }, true);
-  addEventListener('keydown', e => { if (e.key === 'Escape' && box.classList.contains('full')) box.querySelector('[data-full]').click(); });
-  requestAnimationFrame(fit);
-  new ResizeObserver(() => { if (!drag) fit(); }).observe(wrap);
 }
 
 /** Inline markdown (flashcards, questions) with the same link resolution as chapters. */

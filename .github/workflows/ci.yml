@@ -40,3 +40,6 @@ jobs:
 
       - name: Check content index is not stale
         run: python3 scripts/build-content.py --check
+
+      - name: Check explorables still quote their chapters verbatim
+        run: python3 scripts/check-explorables.py

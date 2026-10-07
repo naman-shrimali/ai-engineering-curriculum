@@ -12,7 +12,7 @@ let current = { name: null, teardown: null };
 
 const NAV = [
   ['#/', 'home', 'Home'], ['#/map', 'map', 'Curriculum map'], ['#/concepts', 'concepts', 'Concept graph'],
-  ['#/chapters', 'book', 'Chapters'], ['#/cards', 'cards', 'Flashcards'], ['#/practice', 'practice', 'Practice'],
+  ['#/chapters', 'book', 'Chapters'], ['#/diagrams', 'diagram', 'Diagrams'], ['#/cards', 'cards', 'Flashcards'], ['#/practice', 'practice', 'Practice'],
   ['#/glossary', 'glossary', 'Glossary'], ['#/reading', 'reading', 'Reading list'],
 ];
 const TABS = [['#/', 'home', 'Home'], ['#/map', 'map', 'Map'], ['#/chapters', 'book', 'Chapters'], ['#/cards', 'cards', 'Cards']];
@@ -29,7 +29,7 @@ async function boot() {
   const mods = await Promise.all([
     import('./views/home.js'), import('./views/map.js'), import('./views/concepts.js'), import('./views/chapters.js'),
     import('./views/chapter.js'), import('./views/cards.js'), import('./views/practice.js'), import('./views/glossary.js'),
-    import('./views/reading.js'), import('./views/doc.js'), import('./views/profile.js'),
+    import('./views/reading.js'), import('./views/doc.js'), import('./views/profile.js'), import('./views/diagrams.js'),
   ]);
   for (const m of mods) Object.assign(views, m.default);
   renderNav(); wireChrome();
@@ -54,7 +54,7 @@ export function parseHash() {
   const query = Object.fromEntries(new URLSearchParams(qs || ''));
   if (frag) query.s = query.s || frag;
   const seg = path.split('/').filter(Boolean);
-  const table = { '': 'home', map: 'map', concepts: 'concepts', chapters: 'chapters', c: 'chapter', cards: 'cards', practice: 'practice', glossary: 'glossary', reading: 'reading', doc: 'doc', profile: 'profile' };
+  const table = { '': 'home', map: 'map', concepts: 'concepts', chapters: 'chapters', c: 'chapter', cards: 'cards', practice: 'practice', glossary: 'glossary', reading: 'reading', doc: 'doc', profile: 'profile', diagrams: 'diagrams' };
   const name = table[seg[0] || ''] || 'home';
   const params = name === 'chapter' ? { id: seg[1] } : name === 'doc' ? { path: seg.slice(1).join('/') } : name === 'glossary' ? { term: seg[1] } : {};
   return { name, params, query };
