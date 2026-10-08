@@ -5,7 +5,7 @@ module: frontier
 prerequisites: [agt-01, rag-05, evl-01]
 related_ids: [fro-04, evl-01, agt-01, rag-05]
 keywords:
-  - AI engineering interviews
+  - ai engineering interviews
   - system design interview
   - portfolio project
   - capstone presentation
@@ -14,7 +14,7 @@ keywords:
   - interview preparation
   - career positioning
 summary: >-
-  Converting 60 chapters of technical depth into something an interviewer
+  Converting the curriculum's technical depth into something an interviewer
   can actually evaluate. Covers what AI engineering interviews specifically
   probe for, how to turn a capstone project into a portfolio artifact that
   survives scrutiny, the trade-off-articulation skill that separates a
@@ -23,15 +23,27 @@ summary: >-
 difficulty: 2
 est_minutes: 135
 status: evolving
-volatility: medium
+volatility: mixed
 last_reviewed: 2026-07-28
 sources:
-  - key: chip-mlsysdesign
-    tier: 4
-    title: "Machine Learning System Design"
-    org: Chip Huyen
-    url: https://huyenchip.com/machine-learning-systems-design/toc.html
-    accessed: 2026-07-28
+  - key: huyen-aie
+    tier: 3
+    title: "AI Engineering: Building Applications with Foundation Models"
+    org: O'Reilly Media
+    url: https://search.worldcat.org/title/1569046080
+    accessed: 2026-10-08
+  - key: swyx-ai-engineer
+    tier: 5
+    title: "The Rise of the AI Engineer"
+    org: Latent Space (swyx)
+    url: https://www.latent.space/p/ai-engineer
+    accessed: 2026-10-08
+  - key: husain-evals
+    tier: 5
+    title: "Your AI Product Needs Evals"
+    org: Hamel Husain
+    url: https://hamel.dev/blog/posts/evals/
+    accessed: 2026-10-08
   - key: eugeneyan-patterns
     tier: 4
     title: "Patterns for Building LLM-based Systems and Products"
@@ -42,7 +54,7 @@ sources:
 
 # Interviews and Portfolio
 
-This is the last chapter of the curriculum, and it's a deliberately different kind of chapter: everything from [fnd-01](../01-foundations/fnd-01-what-is-an-llm.md) through [fro-03](fro-03-edge-on-device.md) built technical depth; this one is about *converting* that depth into something legible to someone who has thirty minutes to evaluate you, or a portfolio page they'll skim for two minutes before deciding whether to read further. The skill here isn't new knowledge — it's translation, and it matters because a candidate who deeply understands, say, [prd-02](../06-production/prd-02-inference-and-serving.md)'s continuous batching but can't explain *why it matters for the specific system being discussed* in an interview will lose to a candidate with a shallower understanding who can tell a clear, well-structured story. Depth without translation doesn't show up as a hire.
+This is the last chapter of the curriculum, and it's a deliberately different kind of chapter: everything from [fnd-01](../01-foundations/fnd-01-ai-engineering-landscape.md) through [fro-03](fro-03-edge-on-device.md) built technical depth; this one is about *converting* that depth — the work of the role the field started calling the "AI engineer" in 2023[^swyx-ai-engineer] — into something legible to someone who has thirty minutes to evaluate you, or a portfolio page they'll skim for two minutes before deciding whether to read further. The skill here isn't new knowledge — it's translation, and it matters because a candidate who deeply understands, say, [prd-02](../06-production/prd-02-inference-and-serving.md)'s continuous batching but can't explain *why it matters for the specific system being discussed* in an interview will lose to a candidate with a shallower understanding who can tell a clear, well-structured story. Depth without translation doesn't show up as a hire.
 
 ## Intuition: interviews test judgment under compression, not knowledge under no constraint
 
@@ -50,13 +62,13 @@ Every chapter in this curriculum had room for nuance — caveats, edge cases, "i
 
 ## What AI engineering interviews specifically probe for
 
-**System design questions, LLM-flavored.** A general software system design question asks you to design a scalable web service; an AI engineering version asks you to design a RAG pipeline, an agent system, or a production LLM feature end to end — and the evaluation criteria track this curriculum's structure closely: did you address the customization decision ([ftn-01](../08-fine-tuning/ftn-01-customization-decision.md)) before jumping to a solution, did you reason about the quality-latency-cost triangle ([prd-01](../06-production/prd-01-architecture-patterns.md)) rather than optimizing one axis blindly, did you mention evaluation ([evl-01](../05-evaluation/evl-01-eval-fundamentals.md)) as part of the design rather than an afterthought, did you consider failure modes and guardrails ([prd-04](../06-production/prd-04-reliability.md), [sec-02](../07-safety-security/sec-02-guardrails.md)) rather than only the happy path.
+**System design questions, LLM-flavored.** A general software system design question asks you to design a scalable web service; an AI engineering version asks you to design a RAG pipeline, an agent system, or a production LLM feature end to end — and the evaluation criteria track this curriculum's structure closely: did you address the customization decision ([ftn-01](../08-fine-tuning/ftn-01-customization-decision.md)) before jumping to a solution, did you reason about the quality-latency-cost triangle ([prd-05](../06-production/prd-05-cost-engineering.md)) rather than optimizing one axis blindly, did you mention evaluation ([evl-01](../05-evaluation/evl-01-evaluation-fundamentals.md)) as part of the design rather than an afterthought, did you consider failure modes and guardrails ([prd-04](../06-production/prd-04-reliability.md), [sec-02](../07-safety-security/sec-02-guardrails.md)) rather than only the happy path.
 
 **Trade-off articulation, tested directly.** A common interview pattern presents two options (fine-tuning versus RAG, a bigger model versus a routing cascade, synchronous versus streaming) and asks you to choose — and the actual evaluation target isn't which option you pick, it's whether you can name the *specific factors* that would flip the decision, demonstrating the same conditional reasoning this curriculum's chapters modeled throughout ("X is usually right, except when Y, because Z") rather than a static, memorized preference.
 
 **Debugging and failure-mode reasoning.** Given a described production symptom (rising latency, degrading quality, a cost spike), can you generate the right diagnostic questions and hypotheses — directly testing the failure-mode-and-fix pattern this curriculum's chapters built explicitly into every "Failure modes and trade-offs" section, because that reasoning pattern is precisely what production debugging requires.
 
-**Depth-check follow-ups.** A candidate who states "we'd use RAG for this" gets a follow-up: how would you chunk the documents, how would you evaluate retrieval quality, what happens if the retrieved context is wrong — probing whether the initial answer reflected genuine understanding of [rag-04](../03-retrieval/rag-04-chunking-strategies.md) through [rag-06](../03-retrieval/rag-06-rag-evaluation.md)'s actual mechanics or a surface-level pattern match to a term.
+**Depth-check follow-ups.** A candidate who states "we'd use RAG for this" gets a follow-up: how would you chunk the documents, how would you evaluate retrieval quality, what happens if the retrieved context is wrong — probing whether the initial answer reflected genuine understanding of [rag-04](../03-retrieval/rag-04-chunking.md) through [rag-07](../03-retrieval/rag-07-rag-evaluation.md)'s actual mechanics or a surface-level pattern match to a term.
 
 ## Turning a capstone project into a portfolio artifact
 
@@ -64,7 +76,7 @@ Every chapter in this curriculum had room for nuance — caveats, edge cases, "i
 
 **Lead with the decision, not the implementation.** A portfolio write-up that opens with "I built a RAG system using [specific vector database] and [specific framework]" buries the signal; one that opens with "the task needed current, frequently-changing knowledge rather than a fixed behavior pattern, so I chose RAG over fine-tuning, validated with [specific eval result]" demonstrates the [ftn-01](../08-fine-tuning/ftn-01-customization-decision.md)-style judgment an evaluator is actually looking for, with the implementation details following as support rather than as the headline.
 
-**Show the eval, not just the demo.** A working demo shows the system functions; a measured eval suite (per [evl-02](../05-evaluation/evl-02-eval-datasets.md)) with a specific number and a specific baseline comparison shows you know whether it's actually *good*, and that distinction — building something that runs versus building something you've measured — is exactly what separates a portfolio project that reads as a tutorial-following exercise from one that reads as engineering judgment.
+**Show the eval, not just the demo.** A working demo shows the system functions; a measured eval suite ([evl-01](../05-evaluation/evl-01-evaluation-fundamentals.md)'s harness on an [evl-02](../05-evaluation/evl-02-eval-datasets.md) dataset) with a specific number and a specific baseline comparison shows you know whether it's actually *good* — the habit practitioners single out as what separates AI products that improve from ones that stall[^husain-evals] — and that distinction — building something that runs versus building something you've measured — is exactly what separates a portfolio project that reads as a tutorial-following exercise from one that reads as engineering judgment.
 
 **Document one real failure and its fix.** Every chapter in this curriculum built a "Real-world examples" section around a failure diagnosed and fixed, because that's a more convincing demonstration of understanding than a description of what worked on the first try — a portfolio project that includes "the first retrieval approach returned irrelevant chunks because of X; switching to Y fixed it, measured by Z" demonstrates the debugging and failure-mode reasoning interviews specifically probe for, directly and concretely.
 
@@ -97,7 +109,7 @@ graph TD
 
 ## Historical evolution
 
-**2021–2022:** AI/ML engineering interviews largely inherit general software system design and ML fundamentals formats, with limited LLM-specific content since production LLM engineering as a distinct discipline barely existed yet. **2023:** as production LLM roles proliferate, interview formats begin incorporating LLM-specific system design scenarios — RAG pipeline design, prompt engineering evaluation, agent architecture — though often inconsistently across companies, reflecting the field's own rapid concurrent formation. **2023–2024:** practitioner-written system design resources[^chip-mlsysdesign][^eugeneyan-patterns] become widely referenced both by candidates preparing and by interviewers designing questions, converging the field toward a more consistent, recognizable set of LLM system design evaluation criteria — largely the same criteria (customization decision, trade-off reasoning, evaluation-mindedness, failure-mode awareness) this chapter organizes around. **2024–present:** as the discipline matures further, interviews increasingly probe for judgment and trade-off articulation specifically, rather than just terminology recognition, reflecting the field's broader shift (traced throughout this curriculum, particularly in Modules 5 through 8) from "can you use an LLM API" to "can you engineer a production system responsibly around one" — the same maturation this entire curriculum has tracked, now reflected in how the field evaluates its practitioners.
+**2021–2022:** AI/ML engineering interviews largely inherit general software system design and ML fundamentals formats, with limited LLM-specific content since production LLM engineering as a distinct discipline barely existed yet. **2023:** as production LLM roles proliferate, interview formats begin incorporating LLM-specific system design scenarios — RAG pipeline design, prompt engineering evaluation, agent architecture — though often inconsistently across companies, reflecting the field's own rapid concurrent formation. **2023–2025:** practitioner-written accounts of building LLM systems — Eugene Yan's patterns catalogue (2023)[^eugeneyan-patterns] and Chip Huyen's *AI Engineering* (2025),[^huyen-aie] among others — give candidates and interviewers a shared vocabulary for LLM system design: evaluation, retrieval, guardrails, cost and latency, the customization decision — largely the criteria this chapter organizes around. **2024–present:** as the discipline matures further, interviews increasingly probe for judgment and trade-off articulation specifically, rather than just terminology recognition, reflecting the field's broader shift (traced throughout this curriculum, particularly in Modules 5 through 8) from "can you use an LLM API" to "can you engineer a production system responsibly around one" — the same maturation this entire curriculum has tracked, now reflected in how the field evaluates its practitioners.
 
 ## Common misconceptions
 
@@ -139,7 +151,7 @@ graph TD
 
 1. **"Design a customer support system using an LLM. Walk me through your approach."** — Model answer: I'd start with the customization decision — does the gap look like missing/changing knowledge (RAG) or inconsistent behavior/format (fine-tuning), and I'd ask what's actually failing today if this is replacing an existing system. I'd design for the quality-latency-cost triangle explicitly rather than only optimizing one axis, build in evaluation from the start rather than as an afterthought, and name the specific failure modes I'd guard against — hallucinated answers, prompt injection if it ingests external content, and a fallback path for when the system can't confidently answer. I'd want to know the actual volume and update frequency of the underlying knowledge before committing to a specific architecture, since that's the detail that resolves several of these decisions.
 
-2. **"When would you choose fine-tuning over RAG, concretely — not the general rule, a specific example?"** — Model answer: a structured-extraction task where the model has all the information it needs in the input already, but keeps producing inconsistent output formatting despite a well-engineered prompt with examples — that's a behavior gap, not a knowledge gap, and RAG wouldn't touch it since there's no missing external information to retrieve. I'd first confirm the gap survives a long, detailed few-shot prompt (the long-prompt test) before committing to fine-tuning's higher cost and maintenance burden, but if it does, baking the format consistency into weights removes the need to pay for a long prompt on every call.
+2. **"When would you choose fine-tuning over RAG, concretely — not the general rule, a specific example?"** — Model answer: a structured-extraction task where the model has all the information it needs in the input already, but keeps producing inconsistent output formatting despite a well-engineered prompt with examples — that's a behavior gap, not a knowledge gap, and RAG wouldn't touch it since there's no missing external information to retrieve. If the problem is purely format, I'd first reach for schema-constrained structured outputs ([api-03](../02-llm-apis/api-03-structured-outputs-tool-calling.md)), which guarantee valid structure without training. The fine-tuning case is the residue that survives that — consistent *field semantics* or style the schema can't express — and I'd confirm it survives a long, detailed few-shot prompt (the long-prompt test) before committing to fine-tuning's higher cost and maintenance burden, but if it does, baking the format consistency into weights removes the need to pay for a long prompt on every call.
 
 3. **"Tell me about a time a project you built didn't work initially. What did you do?"** — Model answer (framed generically, adaptable to your own project): I'd describe the specific symptom observed (not just "it didn't work" — a concrete measured shortfall), the diagnostic process (what I checked first and why, following the failure-mode reasoning pattern of narrowing from symptom to root cause), the specific fix, and the measured improvement after the fix — closing with what I'd do differently if starting over, since that reflects on the judgment gained, not just the immediate fix applied.
 
@@ -159,7 +171,7 @@ graph TD
 
 **Mini-project: assemble your portfolio and rehearse.** This is the curriculum's final project, and it consolidates rather than introduces new work: (a) select two to three of your strongest mini-projects from across this curriculum's 61 chapters; (b) rewrite each as a decision-first portfolio entry — problem, decision and justification, measured result, one documented failure and fix; (c) write out full answers to three system-design-style questions using your own projects as concrete grounding, not hypothetical scenarios; (d) practice delivering one of these answers out loud, timed, to another person or recorded, and review for framework-recitation versus scenario-specific articulation; (e) revise based on what the practice run revealed. Target: 4 hours. Success criterion: a portfolio entry and a rehearsed answer that name a specific, concrete deciding factor rather than a general framework — the compression skill this chapter is built around, demonstrated on your own real work.
 
-**Capstone extension:** this chapter is the final synthesis point for the entire curriculum — draw on [ftn-01](../08-fine-tuning/ftn-01-customization-decision.md)'s decision framework, [prd-01](../06-production/prd-01-architecture-patterns.md)'s triangle, [evl-01](../05-evaluation/evl-01-eval-fundamentals.md)'s evaluation mindset, and [prd-04](../06-production/prd-04-reliability.md)'s failure-mode discipline as the checklist for both your portfolio and your interview preparation; [fro-04](fro-04-staying-current.md)'s staying-current system is what keeps this preparation from going stale after today.
+**Capstone extension:** this chapter is the final synthesis point for the entire curriculum — draw on [ftn-01](../08-fine-tuning/ftn-01-customization-decision.md)'s decision framework, [prd-05](../06-production/prd-05-cost-engineering.md)'s quality-latency-cost triangle, [evl-01](../05-evaluation/evl-01-evaluation-fundamentals.md)'s evaluation mindset, and [prd-04](../06-production/prd-04-reliability.md)'s failure-mode discipline as the checklist for both your portfolio and your interview preparation; [fro-04](fro-04-staying-current.md)'s staying-current system is what keeps this preparation from going stale after today.
 
 ## Revision summary
 
@@ -180,10 +192,13 @@ graph TD
 | Why does a measured eval result beat a working demo alone? | It shows the system is actually good, not just that it runs. |
 | Why is "it depends" an incomplete interview answer? | It's true but doesn't demonstrate the judgment to name the specific factor that resolves the dependency. |
 | What's the best raw material for interview practice? | Your own mini-projects — concrete, lived experience beats hypothetical reasoning under pressure. |
+| Why should a portfolio project document one real failure and its fix? | It demonstrates the debugging and failure-mode reasoning interviews probe for, and is stronger evidence of engineering judgment than a clean first-try success story. |
+| What are depth-check follow-ups designed to expose? | Whether an answer like "we'd use RAG" reflects real understanding of the mechanics (chunking, retrieval evaluation, wrong retrieved context) or a surface-level pattern match to a term. |
 
 ## Further reading
 
-- **Practitioner references:** Chip Huyen's ML systems design resource[^chip-mlsysdesign] and Eugene Yan's LLM patterns writeup[^eugeneyan-patterns] — widely-referenced, practically-oriented material that pairs well with this chapter's interview-preparation framing.
+- **Books:** Chip Huyen, *AI Engineering*[^huyen-aie] — a book-length treatment of the same stack (evaluation, prompting, RAG, agents, fine-tuning, serving cost and latency), useful as a second explanation of anything you need to articulate.
+- **Practitioner references:** Eugene Yan's LLM patterns writeup[^eugeneyan-patterns] and Hamel Husain's "Your AI Product Needs Evals"[^husain-evals] — practically-oriented material that pairs well with this chapter's interview-preparation framing; this repo's [eng-12](../../engineering/eng-12-interview-prep-pack.md) is the companion drill index.
 - **Tutorials:** run the mini-project's rehearsal step — timed, out loud, reviewed — before any real interview; reading this chapter builds recognition, only the rehearsal builds the compression skill it describes.
 
 ## Check your understanding
@@ -196,5 +211,7 @@ graph TD
 
 ## Sources
 
-[^chip-mlsysdesign]: [T4] Huyen, C. "Machine Learning System Design." https://huyenchip.com/machine-learning-systems-design/toc.html (accessed 2026-07-28)
+[^huyen-aie]: [T3] Huyen, C. (2025). *AI Engineering: Building Applications with Foundation Models*. O'Reilly Media. ISBN 978-1-098-16630-4. https://search.worldcat.org/title/1569046080 (accessed 2026-10-08)
+[^swyx-ai-engineer]: [T5 — no higher-tier source exists for the role's naming] swyx (2023). "The Rise of the AI Engineer." Latent Space. https://www.latent.space/p/ai-engineer (accessed 2026-10-08)
+[^husain-evals]: [T5 — practitioner canon; no higher-tier source makes the eval-first product argument this concretely] Husain, H. (2024). "Your AI Product Needs Evals." https://hamel.dev/blog/posts/evals/ (accessed 2026-10-08)
 [^eugeneyan-patterns]: [T4] Yan, E. "Patterns for Building LLM-based Systems and Products." https://eugeneyan.com/writing/llm-patterns/ (accessed 2026-07-28)

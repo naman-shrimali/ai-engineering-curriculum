@@ -47,7 +47,7 @@ sources:
 
 # Reference Architecture: Agent & Tool-Use Loop
 
-An agent is the tool-calling round trip of [api-03](../modules/02-llm-apis/api-03-structured-outputs-tool-calling.md) run in a loop until the task is done — the model plans, your runtime acts, results feed back as context, repeat.[^yao-react] Everything hard about agents is in the word *runtime*: the model supplies decisions; your code supplies every guarantee. This doc specifies that runtime — components, control points, budgets, and privilege boundaries — as the blueprint the module 4 chapters fill with mechanisms. The guiding doctrine, industry-converged: **start with the simplest loop that could work; add orchestration only when a measured failure demands it.**[^anthropic-agents]
+An agent is the tool-calling round trip of [api-03](../modules/02-llm-apis/api-03-structured-outputs-tool-calling.md) run in a loop until the task is done — the model plans, your runtime acts, results feed back as context, repeat.[^yao-react][^anthropic-tools] Everything hard about agents is in the word *runtime*: the model supplies decisions; your code supplies every guarantee. This doc specifies that runtime — components, control points, budgets, and privilege boundaries — as the blueprint the module 4 chapters fill with mechanisms. The guiding doctrine, industry-converged: **start with the simplest loop that could work; add orchestration only when a measured failure demands it.**[^anthropic-agents]
 
 ## The loop as a state machine
 

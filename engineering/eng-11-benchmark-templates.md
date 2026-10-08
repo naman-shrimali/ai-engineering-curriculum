@@ -113,7 +113,7 @@ Capability crossings logged: <ids> → roadmap tickets: <links>
 
 Same paperwork, different candidate axis ([api-07](../modules/02-llm-apis/api-07-local-inference.md) — every row is a "model version"): candidates = (weights × quantization × engine version × serving config), constraint filter gains VRAM/hardware rows, cost-per-task becomes cost-per-task-at-measured-utilization, and section 4 adds concurrency: tokens/sec at 1 / 8 / 32 parallel requests at your P95 context. Template-mismatch check ([api-07](../modules/02-llm-apis/api-07-local-inference.md)'s first suspect) runs *before* any quality numbers are recorded.
 
-> **Volatile:** the template's rows are stable; everything filled into them — prices, models, quotas, feature support — is quarterly-perishable, which is precisely why the header carries dates and the decision log carries re-evaluation triggers ([fro-04](../modules/09-frontier/fro-04-staying-current.md)).
+> **Volatile:** the template's rows are stable; everything filled into them — prices, models, quotas, feature support — is quarterly-perishable[^anthropic-models], which is precisely why the header carries dates and the decision log carries re-evaluation triggers ([fro-04](../modules/09-frontier/fro-04-staying-current.md)).
 
 ## Related chapters
 

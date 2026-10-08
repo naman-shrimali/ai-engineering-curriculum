@@ -5,13 +5,13 @@ module: frontier
 prerequisites: [api-04, api-05]
 related_ids: [api-04, api-05, prd-02, prd-04]
 keywords:
-  - realtime API
+  - realtime api
   - speech-to-speech
   - voice latency budget
   - turn-taking
   - interruption handling
   - cascaded vs native voice
-  - WebRTC
+  - webrtc
   - conversational latency
 summary: >-
   Why voice interfaces are a different engineering problem from text, not
@@ -23,7 +23,7 @@ summary: >-
 difficulty: 3
 est_minutes: 150
 status: experimental
-volatility: high
+volatility: volatile
 last_reviewed: 2026-07-25
 sources:
   - key: openai-realtime
@@ -32,12 +32,18 @@ sources:
     org: OpenAI
     url: https://platform.openai.com/docs/guides/realtime
     accessed: 2026-07-25
-  - key: anthropic-voice
+  - key: gemini-live
     tier: 1
-    title: "Multimodal capabilities"
-    org: Anthropic
-    url: https://docs.anthropic.com/en/docs/build-with-claude/vision
-    accessed: 2026-07-25
+    title: "Gemini Live API overview"
+    org: Google Cloud
+    url: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/live-api
+    accessed: 2026-10-08
+  - key: radford-whisper
+    tier: 2
+    title: "Robust Speech Recognition via Large-Scale Weak Supervision"
+    org: OpenAI
+    url: https://arxiv.org/abs/2212.04356
+    accessed: 2026-10-08
   - key: defossez-moshi
     tier: 2
     title: "Moshi: a speech-text foundation model for real-time dialogue"
@@ -48,7 +54,7 @@ sources:
 
 # Voice and Realtime
 
-This chapter opens Module 9's tour of the frontier — areas where the engineering practice is still settling, the tooling changes month to month, and the right answer for a given project depends more on current constraints than on established best practice. Voice is the clearest example of why frontier chapters need a different tone than the rest of this curriculum: **[api-04](../02-llm-apis/api-04-multimodal.md) already covered multimodal input and output generally; this chapter is specifically about what changes when the modality is spoken conversation happening in real time**, because latency and turn-taking introduce constraints text-based multimodal interaction simply doesn't have, and no amount of prompting or model quality fixes a conversation that feels laggy or that can't handle being interrupted.
+This chapter opens Module 9's tour of the frontier — areas where the engineering practice is still settling, the tooling changes month to month, and the right answer for a given project depends more on current constraints than on established best practice. Voice is the clearest example of why frontier chapters need a different tone than the rest of this curriculum: **[api-04](../02-llm-apis/api-04-multimodal.md) covered multimodal input — images, documents and audio understanding through the same messages API; this chapter is specifically about what changes when the modality is spoken conversation happening in real time**, because latency and turn-taking introduce constraints text-based multimodal interaction simply doesn't have, and no amount of prompting or model quality fixes a conversation that feels laggy or that can't handle being interrupted.
 
 ## Intuition: voice has a clock that text doesn't
 
@@ -56,9 +62,9 @@ A text chat interface has no strict latency requirement beyond "reasonably respo
 
 ## Cascaded versus native speech-to-speech architectures
 
-**The cascaded architecture** chains three separate systems: automatic speech recognition (ASR) converts spoken audio to text, the LLM processes that text and generates a text response (everything Modules 1-8 already cover), and text-to-speech (TTS) converts the response back to audio. This is the more mature, more modular approach — each component can be swapped, upgraded, or debugged independently, and it directly reuses this entire curriculum's text-based LLM engineering practice unchanged for the middle stage. Its cost is **cumulative latency**: three sequential processing stages, each with its own processing time, stacked in series, and each translation step (speech-to-text, text-to-speech) is a lossy conversion that can drop paralinguistic information — tone, emphasis, hesitation — that a native audio model could in principle preserve.
+**The cascaded architecture** chains three separate systems: automatic speech recognition (ASR) converts spoken audio to text (Whisper is the reference open model, trained on about 680,000 hours of weakly supervised audio[^radford-whisper]), the LLM processes that text and generates a text response (everything Modules 1-8 already cover), and text-to-speech (TTS) converts the response back to audio. This is the more mature, more modular approach — each component can be swapped, upgraded, or debugged independently, and it directly reuses this entire curriculum's text-based LLM engineering practice unchanged for the middle stage. Its cost is **cumulative latency**: three sequential processing stages, each with its own processing time, stacked in series, and each translation step (speech-to-text, text-to-speech) is a lossy conversion that can drop paralinguistic information — tone, emphasis, hesitation — that a native audio model could in principle preserve.
 
-**Native speech-to-speech models** process and generate audio directly, without an intermediate text representation, using architectures trained end-to-end on audio tokens rather than composing separately-trained ASR, LLM, and TTS systems.[^defossez-moshi] This eliminates the cascaded approach's stacked latency and its paralinguistic information loss — tone, timing, and prosody can be modeled directly rather than discarded at a text bottleneck — at the cost of a less mature, less modular technology where the underlying model's text-domain reasoning capability (everything Modules 1-8 establish about model behavior) may not transfer as cleanly, since it's a genuinely different model family rather than a text LLM with new endpoints attached.
+**Native speech-to-speech models** take audio in and produce audio out within one model trained end-to-end on audio tokens, rather than composing separately-trained ASR, LLM, and TTS systems. "No cascade" is not the same as "no text": Moshi, for example, models the user's speech and its own as parallel audio streams and still predicts time-aligned text tokens just ahead of its audio tokens — an "inner monologue" its authors found makes the generated speech markedly more coherent.[^defossez-moshi] This eliminates the cascaded approach's stacked latency and its paralinguistic information loss — tone, timing, and prosody can be modeled directly rather than discarded at a hand-off between separate systems — at the cost of a less mature, less modular technology where the underlying model's text-domain reasoning capability (everything Modules 1-8 establish about model behavior) may not transfer as cleanly, since it's a genuinely different model family rather than a text LLM with new endpoints attached.
 
 *The two architectures — cascaded's modularity and stacked latency, native's directness and technical immaturity:*
 
@@ -71,16 +77,16 @@ graph TD
     D1 --> E1[Audio out]
   end
   subgraph Native[Native speech-to-speech]
-    A2[Audio in] --> B2[End-to-end audio model:<br/>no text bottleneck]
+    A2[Audio in] --> B2[End-to-end audio model:<br/>no hand-off between systems]
     B2 --> E2[Audio out]
   end
 ```
 
-**Provider-hosted realtime APIs** increasingly abstract this choice behind a single interface — a WebSocket or WebRTC connection handling audio streaming, turn detection, and interruption, whether the underlying implementation is cascaded or native.[^openai-realtime] For most application engineers, the practical decision is less "build a cascaded pipeline from scratch" and more "which provider's realtime offering meets the latency and quality bar for this specific use case" — an instance of [api-06](../02-llm-apis/api-06-model-selection.md)'s model-selection framework applied to a voice-specific capability axis.
+**Provider-hosted realtime APIs** increasingly abstract this choice behind a single interface — a WebSocket or WebRTC connection handling audio streaming, turn detection, and interruption, whether the underlying implementation is cascaded or native.[^openai-realtime][^gemini-live] For most application engineers, the practical decision is less "build a cascaded pipeline from scratch" and more "which provider's realtime offering meets the latency and quality bar for this specific use case" — an instance of [api-06](../02-llm-apis/api-06-model-selection.md)'s model-selection framework applied to a voice-specific capability axis.
 
 ## The latency budget
 
-**Every stage in the pipeline consumes part of a strict, shared budget**, and the engineering discipline is treating that budget as a hard constraint from the start rather than an afterthought to optimize once something is working. Network round-trip time, ASR processing (if cascaded), the LLM's time-to-first-token ([prd-02](../06-production/prd-02-inference-and-serving.md)'s TTFT, directly relevant here since it's now on the critical conversational path rather than a background metric), TTS generation and audio buffering — each stage's latency stacks, and the target for a conversation to feel natural is often cited around several hundred milliseconds end-to-end, a much tighter bar than any text-based latency target this curriculum has discussed.
+**Every stage in the pipeline consumes part of a strict, shared budget**, and the engineering discipline is treating that budget as a hard constraint from the start rather than an afterthought to optimize once something is working. Network round-trip time, endpointing (the silence the system waits through before deciding the user has finished — often the largest single item, and the subject of the turn-taking section below), ASR processing (if cascaded), the LLM's time-to-first-token ([prd-02](../06-production/prd-02-inference-and-serving.md)'s TTFT, directly relevant here since it's now on the critical conversational path rather than a background metric), TTS generation and audio buffering — each stage's latency stacks, and the target for a conversation to feel natural is often cited around several hundred milliseconds end-to-end, a much tighter bar than any text-based latency target this curriculum has discussed, and one a cascade struggles to meet once every stage, endpointing included, is counted.
 
 **This reframes several prior-module techniques as voice-critical rather than merely nice-to-have**: streaming ([api-05](../02-llm-apis/api-05-streaming-caching-batch.md)) isn't optional for voice, it's structural — TTS needs to begin generating audio from the first tokens of a streaming LLM response rather than waiting for the full response, chaining streaming through every stage of the cascade. Prompt caching becomes more valuable when every millisecond of TTFT is now perceptible conversational lag rather than an abstract cost metric. And model selection ([api-06](../02-llm-apis/api-06-model-selection.md)) tilts harder toward smaller, faster models than a text-only latency budget would justify, because the voice-specific latency ceiling is so much tighter.
 
@@ -143,7 +149,7 @@ graph TD
 
 1. **"Why is voice a fundamentally different engineering problem from text, not just text with a microphone?"** — Model answer: voice has a strict, shared latency budget on the order of a few hundred milliseconds to feel conversationally natural, driven by human conversational turn-taking expectations that text interfaces never had to meet — a delay that would be unremarkable in a chat UI reads as broken in voice. It also introduces turn-taking and interruption as real, unsolved engineering problems with no text equivalent. Both constraints reshape architecture decisions from the ground up, rather than being an incremental feature added on top of a working text system.
 
-2. **"Compare cascaded and native speech-to-speech architectures."** — Model answer: cascaded chains ASR, an LLM, and TTS as separate stages — mature, modular, and it reuses standard text-LLM engineering practice directly for the middle stage, at the cost of stacked latency across three sequential systems and lossy paralinguistic information at each text-conversion boundary. Native speech-to-speech processes audio end-to-end without a text bottleneck, eliminating both the stacked latency and the paralinguistic loss, but with less mature tooling and a model family whose text-domain reasoning may not match the leading text LLMs as cleanly. The right choice depends on the specific use case's latency and fidelity requirements weighed against current tooling maturity.
+2. **"Compare cascaded and native speech-to-speech architectures."** — Model answer: cascaded chains ASR, an LLM, and TTS as separate stages — mature, modular, and it reuses standard text-LLM engineering practice directly for the middle stage, at the cost of stacked latency across three sequential systems and lossy paralinguistic information at each text-conversion boundary. Native speech-to-speech handles audio in and out within one end-to-end model rather than a chain of separate systems (it may still predict text internally, as Moshi does), eliminating both the stacked latency and the paralinguistic loss, but with less mature tooling and a model family whose text-domain reasoning may not match the leading text LLMs as cleanly. The right choice depends on the specific use case's latency and fidelity requirements weighed against current tooling maturity.
 
 3. **"Why is streaming structurally required for voice, not just a latency optimization?"** — Model answer: because the end-to-end conversational latency budget is so tight that waiting for any pipeline stage to fully complete before the next stage begins would blow the budget outright — TTS needs to start generating audio from partial LLM output as it streams in, not after the full response completes, and this needs to chain through every stage of the pipeline. For text applications, streaming improves perceived responsiveness on top of an already-acceptable baseline; for voice, it's what makes hitting the latency target possible at all.
 
@@ -184,11 +190,13 @@ graph TD
 | What does interruption handling require? | Fast detection, clean halt of in-flight generation, and an explicit decision on how to handle the cut-off response. |
 | Why are voice failures more visible than text failures? | A turn-taking or interruption misfire is immediately, viscerally noticeable in a way a text system's equivalent hiccup usually isn't. |
 | Why does this chapter carry an "experimental" status? | The dominant architecture, tooling, and best practices are still actively shifting — genuine field immaturity, not a documentation gap. |
+| What stages make up a voice pipeline's shared latency budget? | Network round-trip, endpointing (silence waited through; often the largest item), ASR if cascaded, LLM time-to-first-token, and TTS plus audio buffering; all stack. |
+| Which architecture should be the default for most production voice use cases today? | Cascaded, for its maturity and direct reuse of text-LLM practice; reserve native speech-to-speech for cases needing paralinguistic fidelity or a latency floor only it can provide. |
 
 ## Further reading
 
-- **Official docs:** OpenAI's Realtime API guide[^openai-realtime] and Anthropic's multimodal documentation[^anthropic-voice] — concrete, current provider-hosted approaches.
-- **Papers:** the Moshi paper[^defossez-moshi] — a concrete native speech-to-speech architecture, useful for understanding what "end-to-end audio" actually looks like technically.
+- **Official docs:** OpenAI's Realtime API guide[^openai-realtime] and Google's Gemini Live API overview[^gemini-live] — concrete, current provider-hosted approaches (WebSocket sessions, streaming audio both ways, interruption).
+- **Papers:** the Moshi paper[^defossez-moshi] — a concrete native speech-to-speech architecture, useful for understanding what "end-to-end audio" actually looks like technically; Whisper[^radford-whisper] — the ASR model behind many cascaded pipelines, and a clear account of why large weakly supervised training made speech recognition robust.
 - **Tutorials:** run the mini-project's latency measurement against any available voice pipeline or realtime API before reading further — the several-hundred-millisecond target is far more concrete once you've measured your own stack against it.
 
 ## Check your understanding
@@ -202,5 +210,6 @@ graph TD
 ## Sources
 
 [^openai-realtime]: [T1] OpenAI. "Realtime API." https://platform.openai.com/docs/guides/realtime (accessed 2026-07-25)
-[^anthropic-voice]: [T1] Anthropic. "Multimodal capabilities." https://docs.anthropic.com/en/docs/build-with-claude/vision (accessed 2026-07-25)
+[^gemini-live]: [T1] Google Cloud. "Gemini Live API overview." https://docs.cloud.google.com/vertex-ai/generative-ai/docs/live-api (accessed 2026-10-08)
+[^radford-whisper]: [T2] Radford et al. (2022). "Robust Speech Recognition via Large-Scale Weak Supervision." OpenAI. arXiv:2212.04356. https://arxiv.org/abs/2212.04356 (accessed 2026-10-08)
 [^defossez-moshi]: [T2] Défossez et al. (2024). "Moshi: a speech-text foundation model for real-time dialogue." Kyutai. arXiv:2410.00037. https://arxiv.org/abs/2410.00037 (accessed 2026-07-25)

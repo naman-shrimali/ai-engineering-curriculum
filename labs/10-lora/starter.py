@@ -3,8 +3,8 @@ def matvec(M, x):
     raise NotImplementedError
 
 
-def lora_forward(W, A, B, x):
-    """Wx + B(Ax) for W: d×d (frozen), A: r×d, B: d×r. ValueError on bad shapes."""
+def lora_forward(W, A, B, x, scale=1.0):
+    """Wx + scale·B(Ax) for W: d×d (frozen), A: r×d, B: d×r; scale is α/r. ValueError on bad shapes."""
     raise NotImplementedError
 
 

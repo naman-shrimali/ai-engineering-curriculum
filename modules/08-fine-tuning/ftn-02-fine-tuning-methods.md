@@ -6,13 +6,13 @@ prerequisites: [fnd-05, ftn-01]
 related_ids: [ftn-01, ftn-03, ftn-04, prd-03]
 keywords:
   - full fine-tuning
-  - LoRA
-  - QLoRA
+  - lora
+  - qlora
   - parameter-efficient fine-tuning
   - catastrophic forgetting
   - rank and alpha
   - adapter merging
-  - PEFT
+  - peft
 summary: >-
   How fine-tuning is actually done once the decision from ftn-01 says it's
   justified. Covers full fine-tuning versus parameter-efficient methods,
@@ -23,36 +23,42 @@ summary: >-
 difficulty: 3
 est_minutes: 165
 status: evolving
-volatility: high
+volatility: mixed
 last_reviewed: 2026-07-20
 sources:
   - key: hu-lora
-    tier: 1
+    tier: 2
     title: "LoRA: Low-Rank Adaptation of Large Language Models"
     org: arXiv
     url: https://arxiv.org/abs/2106.09685
     accessed: 2026-07-20
   - key: dettmers-qlora
-    tier: 1
+    tier: 2
     title: "QLoRA: Efficient Finetuning of Quantized LLMs"
     org: arXiv
     url: https://arxiv.org/abs/2305.14314
     accessed: 2026-07-20
   - key: kirkpatrick-catastrophic
-    tier: 1
+    tier: 2
     title: "Overcoming catastrophic forgetting in neural networks"
     org: arXiv / PNAS
     url: https://arxiv.org/abs/1612.00796
     accessed: 2026-07-20
+  - key: hf-peft-lora
+    tier: 1
+    title: "PEFT — LoRA developer guide"
+    org: Hugging Face
+    url: https://huggingface.co/docs/peft/v0.8.1/en/developer_guides/lora
+    accessed: 2026-10-08
 ---
 
 # Fine-Tuning Methods
 
-[ftn-01](ftn-01-customization-decision.md) established when fine-tuning is the right tool. This chapter covers how it's actually done — specifically the choice between updating all of a model's weights and updating a small, cleverly-constructed subset of them, which turns out to be one of the more consequential engineering decisions in the entire process. [fnd-05](../01-foundations/fnd-05-scaling-laws.md) established that modern models have parameter counts in the tens to hundreds of billions; this chapter's central technical idea, **LoRA**, is built directly on the observation that adapting such a model to a new task doesn't require touching anywhere near that many parameters.
+[ftn-01](ftn-01-customization-decision.md) established when fine-tuning is the right tool. This chapter covers how it's actually done — specifically the choice between updating all of a model's weights and updating a small, cleverly-constructed subset of them, which turns out to be one of the more consequential engineering decisions in the entire process. Modern models carry billions to hundreds of billions of parameters — [fnd-06](../01-foundations/fnd-06-llm-pretraining.md)'s scaling laws are why — and every one of them is a number full fine-tuning must update, store gradients for, and hold optimizer state for; this chapter's central technical idea, **LoRA**, is built directly on the observation that adapting such a model to a new task doesn't require touching anywhere near that many parameters.
 
 ## Intuition: you don't need to move every weight to change behavior
 
-Full fine-tuning updates every parameter in the model — conceptually simple, and it's what "fine-tuning" meant by default before 2021. But it requires storing gradients and optimizer state for the entire parameter count, which for a large model means GPU memory requirements many times the model's own size, and it produces a complete new copy of the model's weights for every fine-tuned variant. **The key empirical finding behind parameter-efficient fine-tuning (PEFT) is that the actual *change* needed to adapt a large pretrained model to a new task lives in a much lower-dimensional space than the model's full parameter count** — the update matrix has low "intrinsic rank," and you can capture most of the adaptation's value by learning a low-rank approximation of that update instead of the full-rank update full fine-tuning computes.[^hu-lora]
+Full fine-tuning updates every parameter in the model — conceptually simple, and it's what "fine-tuning" meant by default before 2021. But it requires storing gradients and optimizer state for the entire parameter count, which for a large model means GPU memory requirements many times the model's own size — [fnd-02](../01-foundations/fnd-02-ml-refresher.md)'s arithmetic puts a 7B model at roughly 112 GB to train in full (weights, gradients and Adam state at about 16 bytes per parameter) against about 14 GB just to serve it — and it produces a complete new copy of the model's weights for every fine-tuned variant. **The key empirical finding behind parameter-efficient fine-tuning (PEFT) is that the actual *change* needed to adapt a large pretrained model to a new task lives in a much lower-dimensional space than the model's full parameter count** — the update matrix has low "intrinsic rank," and you can capture most of the adaptation's value by learning a low-rank approximation of that update instead of the full-rank update full fine-tuning computes.[^hu-lora]
 
 ## LoRA: low-rank adaptation
 
@@ -60,7 +66,7 @@ Full fine-tuning updates every parameter in the model — conceptually simple, a
 
 **Why this works at all.** It rests on the intrinsic-rank finding above: the *useful* adaptation signal for most downstream tasks doesn't require full-rank freedom to express, so a low-rank approximation captures most of the value at a small fraction of the parameter and memory cost. This isn't true for every possible adaptation — a task requiring the model to learn something genuinely far from its pretrained distribution may need more rank, or more layers targeted, than a narrower stylistic or format adaptation — which is exactly why rank is a hyperparameter to tune rather than a fixed constant.
 
-**Where LoRA is applied.** Typically to the attention layers' projection matrices (query, key, value, output projections) rather than every weight matrix in the model, since empirically most of the useful adaptation signal concentrates there — though which modules to target is itself a tunable choice, and extending LoRA to feed-forward layers can help for adaptations that need more capacity than attention-only targeting provides.
+**Where LoRA is applied.** The original paper adapted only the attention query and value projections, as a parameter-budget choice,[^hu-lora] and some libraries still default to that.[^hf-peft-lora] But the QLoRA work found that adapters on *all* linear layers — attention and feed-forward — were needed to match full fine-tuning,[^dettmers-qlora] and "all linear layers" has become the common quality-first default; attention-only targeting remains the cheaper option when the adaptation is light. Which modules to target is a tunable choice, and the feed-forward blocks hold most of a transformer's parameters ([fnd-05](../01-foundations/fnd-05-transformer-architecture.md)).
 
 *Full fine-tuning versus LoRA — the same adaptation, radically different trainable-parameter footprint:*
 
@@ -73,15 +79,15 @@ graph LR
     W2["W (frozen: yes)"] --> Sum[+]
     A["A (r×d, trainable)"] --> B["B (d×r, trainable)"]
     B --> Sum
-    Sum --> O2[Output = Wx + BAx]
+    Sum --> O2["Output = Wx + (α/r)·BAx"]
   end
 ```
 
 ## QLoRA: quantization plus low-rank adaptation
 
-**QLoRA** combines LoRA with quantizing the frozen base model's weights to 4-bit precision, dramatically reducing the memory footprint of the base model itself — which, recall, is frozen and not being trained — while keeping the small trainable LoRA matrices in higher precision.[^dettmers-qlora] This is the mechanism that made fine-tuning very large models feasible on consumer or single-GPU hardware: since the frozen base weights dominate memory usage and never need gradient computation, quantizing them (the same quantization technique [prd-03](../06-production/prd-03-inference-optimization.md) covered for inference, applied here to training) shrinks the dominant memory cost while the actual learning happens in a small number of full-precision trainable parameters.
+**QLoRA** combines LoRA with quantizing the frozen base model's weights to 4-bit precision, dramatically reducing the memory footprint of the base model itself — which, recall, is frozen and not being trained — while keeping the small trainable LoRA matrices in higher precision.[^dettmers-qlora] This is the mechanism that made fine-tuning very large models feasible on consumer or single-GPU hardware: since the frozen base weights dominate memory usage and need no weight gradients or optimizer state — gradients still flow *through* them to reach adapters in earlier layers, but nothing is stored for them — quantizing them (the same idea of weight quantization [prd-03](../06-production/prd-03-inference-optimization.md) covered for inference, here stored in 4-bit and dequantized for each computation) shrinks the dominant memory cost while the actual learning happens in a small number of full-precision trainable parameters.
 
-The engineering trade-off: quantization introduces some precision loss in the frozen weights' forward pass, and QLoRA's specific technical contributions (a new 4-bit data type calibrated for typically-normally-distributed neural network weights, and careful handling of quantization error) are what keep that loss small enough not to meaningfully hurt the final adapted model's quality — a nontrivial engineering achievement that's the actual substance of the QLoRA paper beyond "quantize and apply LoRA."
+The engineering trade-off: quantization introduces some precision loss in the frozen weights' forward pass, and QLoRA's three technical contributions are what make the approach work: **4-bit NormalFloat (NF4)**, a data type designed for normally distributed weights, which keeps the precision loss small; **double quantization**, which quantizes the quantization constants themselves to save further memory; and **paged optimizers**, which absorb memory spikes during training instead of crashing on them.[^dettmers-qlora] Together they are the substance of the paper beyond "quantize and apply LoRA" — for a 7B model, roughly 3.5–4 GB of 4-bit weights plus a small adapter and its optimizer state, instead of the ≈112 GB of full fine-tuning.
 
 ## Hyperparameters that actually matter
 
@@ -89,13 +95,15 @@ The engineering trade-off: quantization introduces some precision loss in the fr
 
 **Alpha.** A scaling factor applied to the LoRA update before it's added to the frozen weights, controlling how strongly the adapted behavior is weighted relative to the base model's original behavior — the ratio of alpha to rank is often the more meaningful tuning knob than either value in isolation, since it determines the effective learning-rate-like scale of the adaptation.
 
-**Target modules.** Which weight matrices in the model receive a LoRA adapter — attention projections only, or also feed-forward layers — trading more targeted (cheaper, faster, less forgetting risk) against more comprehensive (more expressive, more capacity for the adaptation) coverage.
+**Target modules.** Which weight matrices in the model receive a LoRA adapter — attention projections only, or all linear layers including feed-forward — trading more targeted (cheaper, faster) against more comprehensive (more expressive, closer to full fine-tuning quality) coverage. Libraries make the comprehensive option one setting (PEFT's `all-linear`).[^hf-peft-lora]
+
+**Merging, or keeping adapters separate.** Because the update is just (α/r)·BA added to W, an adapter can be merged into the base weights for deployment — the result is an ordinary model with no extra inference latency[^hu-lora] — or kept separate, so one base model in memory serves many swappable adapters. Merge when one adapted model serves a route; keep adapters separate when many variants share a base.
 
 **Learning rate and training duration.** Carried over from general neural-network training practice, but worth naming here because fine-tuning's much smaller trainable-parameter count and much smaller dataset (relative to pretraining) mean the learning-rate and epoch-count sensitivity is different — overtraining on a small fine-tuning dataset is a fast, easy way to reach the failure mode below.
 
 ## Catastrophic forgetting: the risk every method trades off differently
 
-**Catastrophic forgetting** is when adapting a model to a new task degrades its performance on tasks it previously handled well — a well-documented phenomenon in neural network training generally, not unique to LLMs, where learning a new task can overwrite the weight configuration that supported prior capability.[^kirkpatrick-catastrophic] For LLM fine-tuning specifically, this shows up as a model that becomes excellent at the narrow fine-tuned task while measurably regressing on general capability, instruction-following quality, or even the base model's alignment properties from [sec-05](../07-safety-security/sec-05-alignment-for-engineers.md) — a regression that's easy to miss if your eval suite only measures the target task and never re-checks general capability.
+**Catastrophic forgetting** is when adapting a model to a new task degrades its performance on tasks it previously handled well — a long-documented phenomenon in neural network training generally, not unique to LLMs, where learning a new task can overwrite the weight configuration that supported prior capability; Kirkpatrick et al. demonstrated it in deep networks and proposed a mitigation that slows learning on the weights most important to earlier tasks.[^kirkpatrick-catastrophic] For LLM fine-tuning specifically, this shows up as a model that becomes excellent at the narrow fine-tuned task while measurably regressing on general capability, instruction-following quality, or even the base model's alignment properties from [sec-05](../07-safety-security/sec-05-alignment-for-engineers.md) — a regression that's easy to miss if your eval suite only measures the target task and never re-checks general capability.
 
 **LoRA's structure offers a partial, mechanistic mitigation**: because the base weights $W$ are frozen and untouched, the original model's full capability is still latently present in $W$ — the adaptation is additive rather than overwriting, which structurally limits (though doesn't eliminate) how much the base capability can degrade, compared to full fine-tuning where every weight, including the ones responsible for general capability, is directly updated and can drift arbitrarily far from its pretrained values. This is a genuine practical advantage of LoRA beyond its memory savings, and it's part of why PEFT methods are the default choice for most fine-tuning projects today rather than merely a memory-constrained fallback.
 
@@ -142,7 +150,7 @@ The engineering trade-off: quantization introduces some precision loss in the fr
 
 ## Real-world examples
 
-**The LoRA adapter that matched full fine-tuning at a fraction of the cost.** A team fine-tunes a model for a narrow structured-extraction task, first with full fine-tuning as a baseline, then with LoRA at a modest rank targeting attention layers. The LoRA-adapted model matches the full fine-tuning baseline's target-task performance within a small margin, at a fraction of the training memory and roughly an order of magnitude smaller artifact size — validating the intrinsic-rank hypothesis directly for their specific task, and becoming their default going forward.
+**The LoRA adapter that matched full fine-tuning at a fraction of the cost.** A team fine-tunes a model for a narrow structured-extraction task, first with full fine-tuning as a baseline, then with LoRA at a modest rank on all linear layers. The LoRA-adapted model matches the full fine-tuning baseline's target-task performance within a small margin, at a fraction of the training memory and with an adapter two to three orders of magnitude smaller than the full checkpoint (well under 1% of the base model's parameters) — validating the intrinsic-rank hypothesis directly for their specific task, and becoming their default going forward.
 
 **The forgetting regression caught only by explicit re-evaluation.** A team fine-tunes a model heavily on a narrow customer-support task, achieving excellent target-task metrics. Only when a separate general-capability eval suite is run — almost as an afterthought — do they discover the fine-tuned model has measurably regressed on unrelated instruction-following and even shows a higher rate of the sycophancy tendency [sec-05](../07-safety-security/sec-05-alignment-for-engineers.md) described, likely from aggressive training on a narrow, repetitive dataset. Reducing training epochs and lowering the alpha scaling factor recovers most of the general-capability score while retaining most of the target-task gain — a trade-off they could only navigate because they measured both sides.
 
@@ -152,7 +160,7 @@ The engineering trade-off: quantization introduces some precision loss in the fr
 
 1. **"Explain how LoRA works and why it's effective despite training far fewer parameters than full fine-tuning."** — Model answer: LoRA freezes the pretrained weight matrix and adds a parallel, trainable low-rank decomposition — two much smaller matrices whose product approximates the update the task actually needs. It works because the useful adaptation signal for most downstream tasks has low intrinsic rank — it doesn't need the full expressive freedom of a full-rank update to be captured well — so a low-rank approximation gets most of the adaptation's value at a small fraction of the trainable-parameter count and memory footprint.
 
-2. **"What does QLoRA add on top of LoRA, and why does it matter?"** — Model answer: QLoRA quantizes the frozen base model's weights to 4-bit precision while keeping the trainable LoRA matrices in higher precision, dramatically cutting the memory footprint of the dominant cost — the frozen base — since it's never touched by gradients anyway. It matters because it makes fine-tuning very large models feasible on much more modest hardware, at a small, carefully-managed precision cost the QLoRA paper's specific technical contributions are designed to keep from meaningfully hurting quality.
+2. **"What does QLoRA add on top of LoRA, and why does it matter?"** — Model answer: QLoRA quantizes the frozen base model's weights to 4-bit precision while keeping the trainable LoRA matrices in higher precision, dramatically cutting the memory footprint of the dominant cost — the frozen base — since it needs no weight gradients or optimizer state. It matters because it makes fine-tuning very large models feasible on much more modest hardware, at a small, carefully managed precision cost: NF4 keeps the 4-bit loss small, double quantization shrinks the quantization constants, and paged optimizers absorb memory spikes.
 
 3. **"Does LoRA solve catastrophic forgetting?"** — Model answer: it partially mitigates it, structurally — because the base weights are frozen rather than directly updated, the model's original capability is still latently present in those weights, which limits how far the weights themselves can drift compared to full fine-tuning. But it's not immunity: the model's actual behavior emerges from the frozen weights and the adapter jointly, and a high-rank, aggressively-trained adapter can still meaningfully shift behavior away from general capability. The only reliable check is explicit evaluation — running a general-capability suite before and after fine-tuning, not just the target-task suite.
 
@@ -170,7 +178,7 @@ The engineering trade-off: quantization introduces some precision loss in the fr
 4. Explain why QLoRA's memory savings come specifically from quantizing the frozen base rather than the trainable adapter.
 5. Given hardware constraints (a single consumer GPU), argue for QLoRA over full fine-tuning or standard LoRA, citing the specific memory bottleneck each addresses.
 
-**Mini-project: fine-tune with LoRA and check for forgetting.** Using an available fine-tuning framework and a small, well-scoped task (reuse a dataset from [ftn-01](ftn-01-customization-decision.md)'s decision exercise if applicable): (a) fine-tune a model with LoRA at a modest rank, targeting attention projections; (b) evaluate on your target task before and after fine-tuning, confirming measurable improvement; (c) evaluate on a small general-capability suite (a handful of unrelated instruction-following prompts) before and after, checking for regression; (d) if you observe forgetting, try reducing rank, alpha, or training epochs and re-measure; (e) write a short memo reporting the target-task gain, any general-capability cost, and the hyperparameters you settled on. Target: 4 hours (plus training time). Success criterion: a measured trade-off curve — target-task gain versus general-capability cost — across at least two hyperparameter settings, not a single untested configuration.
+**Mini-project: fine-tune with LoRA and check for forgetting.** Using an available fine-tuning framework and a small, well-scoped task (take the task from [ftn-01](ftn-01-customization-decision.md)'s mini-project if it justified fine-tuning; [ftn-03](ftn-03-data-for-fine-tuning.md) covers building its dataset): (a) fine-tune a model with LoRA at a modest rank, once on attention projections only and once on all linear layers; (b) evaluate on your target task before and after fine-tuning, confirming measurable improvement; (c) evaluate on a small general-capability suite (a handful of unrelated instruction-following prompts) before and after, checking for regression; (d) if you observe forgetting, try reducing rank, alpha, or training epochs and re-measure; (e) write a short memo reporting the target-task gain, any general-capability cost, and the hyperparameters you settled on. Target: 4 hours (plus training time). Success criterion: a measured trade-off curve — target-task gain versus general-capability cost — across at least two hyperparameter settings, not a single untested configuration.
 
 **Capstone extension:** this chapter picks up directly from [ftn-01](ftn-01-customization-decision.md)'s decision framework; the quantization technique connects to [prd-03](../06-production/prd-03-inference-optimization.md)'s inference-time quantization; [ftn-03](ftn-03-data-for-fine-tuning.md) covers building the dataset this chapter's methods train on.
 
@@ -193,6 +201,8 @@ The engineering trade-off: quantization introduces some precision loss in the fr
 | What hyperparameters matter most in LoRA? | Rank, alpha (scaling), and target modules — all tuned empirically against task complexity. |
 | The only reliable defense against forgetting? | Explicit general-capability evaluation before and after fine-tuning, not just target-task metrics. |
 | When is full fine-tuning justified over LoRA? | Only with tested evidence that PEFT's capacity is genuinely insufficient for the task. |
+| What is catastrophic forgetting? | Adapting a model to a new task degrades its performance on tasks it previously handled well, such as excelling at the narrow task while regressing on general capability. |
+| Why is full fine-tuning so memory-intensive? | It updates every parameter, needing gradients and optimizer state for all of them (GPU memory many times the model's size), plus a complete new weight copy per variant. |
 
 ## Further reading
 
@@ -210,6 +220,7 @@ The engineering trade-off: quantization introduces some precision loss in the fr
 
 ## Sources
 
-[^hu-lora]: [T1] Hu et al. (2021). "LoRA: Low-Rank Adaptation of Large Language Models." arXiv:2106.09685. https://arxiv.org/abs/2106.09685 (accessed 2026-07-20)
-[^dettmers-qlora]: [T1] Dettmers et al. (2023). "QLoRA: Efficient Finetuning of Quantized LLMs." arXiv:2305.14314. https://arxiv.org/abs/2305.14314 (accessed 2026-07-20)
-[^kirkpatrick-catastrophic]: [T1] Kirkpatrick et al. (2017). "Overcoming catastrophic forgetting in neural networks." arXiv:1612.00796. https://arxiv.org/abs/1612.00796 (accessed 2026-07-20)
+[^hu-lora]: [T2] Hu et al. (2021). "LoRA: Low-Rank Adaptation of Large Language Models." arXiv:2106.09685. https://arxiv.org/abs/2106.09685 (accessed 2026-07-20)
+[^dettmers-qlora]: [T2] Dettmers et al. (2023). "QLoRA: Efficient Finetuning of Quantized LLMs." arXiv:2305.14314. https://arxiv.org/abs/2305.14314 (accessed 2026-07-20)
+[^kirkpatrick-catastrophic]: [T2] Kirkpatrick et al. (2017). "Overcoming catastrophic forgetting in neural networks." arXiv:1612.00796. https://arxiv.org/abs/1612.00796 (accessed 2026-07-20)
+[^hf-peft-lora]: [T1] Hugging Face. "LoRA" (PEFT developer guide, v0.8.1). https://huggingface.co/docs/peft/v0.8.1/en/developer_guides/lora (accessed 2026-10-08)

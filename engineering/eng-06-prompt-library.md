@@ -41,7 +41,7 @@ sources:
 
 # Prompt Library
 
-Starting points, not endpoints: every template below encodes the principles of [api-02](../modules/02-llm-apis/api-02-prompt-engineering.md) and the failure defenses of its linked chapters, and every one must be *re-tuned against your eval on your model* before production ([api-02](../modules/02-llm-apis/api-02-prompt-engineering.md)'s migration rule — templates are calibrations). Conventions: `{{variable}}` for parameters, `<section>` XML-style delimiters for injected content (injection hygiene — [sec-01](../modules/07-safety-security/sec-01-prompt-injection.md)), region order per the stable-prefix pattern ([eng-05](eng-05-design-patterns.md) #9). Treat this file's templates as versioned config in your registry ([eng-04](eng-04-llmops-stack.md)), not copy-paste one-offs.
+Starting points, not endpoints: every template below encodes the principles of [api-02](../modules/02-llm-apis/api-02-prompt-engineering.md)[^anthropic-pe][^openai-pe] and the failure defenses of its linked chapters, and every one must be *re-tuned against your eval on your model* before production ([api-02](../modules/02-llm-apis/api-02-prompt-engineering.md)'s migration rule — templates are calibrations). Conventions: `{{variable}}` for parameters, `<section>` XML-style delimiters for injected content (injection hygiene — [sec-01](../modules/07-safety-security/sec-01-prompt-injection.md)), region order per the stable-prefix pattern ([eng-05](eng-05-design-patterns.md) #9). Treat this file's templates as versioned config in your registry ([eng-04](eng-04-llmops-stack.md)), not copy-paste one-offs.
 
 ## Structured extraction
 

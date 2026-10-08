@@ -4,7 +4,7 @@ def matvec(M, x):
     return [sum(m * v for m, v in zip(row, x)) for row in M]
 
 
-def lora_forward(W, A, B, x):
+def lora_forward(W, A, B, x, scale=1.0):
     d, r = len(W), len(A)
     if any(len(row) != d for row in W) or len(x) != d:
         raise ValueError('W must be d x d and x must have length d')
@@ -14,7 +14,7 @@ def lora_forward(W, A, B, x):
         raise ValueError('B must be d x r')
     base = matvec(W, x)
     update = matvec(B, matvec(A, x))
-    return [b + u for b, u in zip(base, update)]
+    return [b + scale * u for b, u in zip(base, update)]
 
 
 def trainable_params(d, r, n_matrices=1):

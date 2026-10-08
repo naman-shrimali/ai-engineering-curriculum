@@ -7,7 +7,7 @@ related_ids: [api-07, ftn-06, prd-03, sec-03]
 keywords:
   - on-device inference
   - edge deployment
-  - mobile LLM
+  - mobile llm
   - model compression for edge
   - offline inference
   - hybrid cloud-edge routing
@@ -24,21 +24,33 @@ summary: >-
 difficulty: 3
 est_minutes: 150
 status: experimental
-volatility: high
+volatility: volatile
 last_reviewed: 2026-07-27
 sources:
-  - key: apple-oss-foundation
-    tier: 1
+  - key: apple-afm
+    tier: 2
     title: "Apple Intelligence Foundation Language Models"
     org: Apple
-    url: https://machinelearning.apple.com/research/apple-intelligence-foundation-language-models
-    accessed: 2026-07-27
+    url: https://arxiv.org/abs/2407.21075
+    accessed: 2026-10-08
+  - key: apple-intro
+    tier: 4
+    title: "Introducing Apple's On-Device and Server Foundation Models"
+    org: Apple Machine Learning Research
+    url: https://machinelearning.apple.com/research/introducing-apple-foundation-models
+    accessed: 2026-10-08
+  - key: gemini-report
+    tier: 2
+    title: "Gemini: A Family of Highly Capable Multimodal Models"
+    org: Google DeepMind
+    url: https://arxiv.org/abs/2312.11805
+    accessed: 2026-10-08
   - key: gemini-nano
     tier: 1
     title: "Gemini Nano"
-    org: Google
-    url: https://deepmind.google/technologies/gemini/nano/
-    accessed: 2026-07-27
+    org: Android Developers
+    url: https://developer.android.com/ai/gemini-nano
+    accessed: 2026-10-08
   - key: gerganov-llamacpp
     tier: 4
     title: "llama.cpp"
@@ -53,17 +65,17 @@ sources:
 
 ## Intuition: the constraint isn't "smaller," it's "a different kind of scarce"
 
-Every optimization technique this curriculum has covered — quantization ([prd-03](../06-production/prd-03-inference-optimization.md)), distillation ([ftn-06](ftn-06-distillation-and-slms.md)), model selection ([api-06](../02-llm-apis/api-06-model-selection.md)) — was framed against server-side constraints: memory bandwidth, GPU cost per hour, latency SLOs measured in the hundreds of milliseconds. Edge deployment inherits all of those pressures *and adds new ones that don't exist server-side at all*: a hard device memory ceiling shared with every other app running (not a provisionable resource), a battery budget that makes sustained high compute utilization a real user-experience cost, thermal throttling that can degrade performance mid-session as the device heats up, and hugely heterogeneous hardware (this year's flagship phone versus a three-year-old mid-range one) that a server fleet, provisioned to a known spec, never has to accommodate. **The engineering discipline isn't "apply the same techniques a bit more aggressively," it's recognizing that edge deployment is optimizing against a different, harsher constraint surface entirely**, which is why it gets its own chapter rather than a paragraph in [prd-03](../06-production/prd-03-inference-optimization.md).
+Every optimization technique this curriculum has covered — quantization ([prd-03](../06-production/prd-03-inference-optimization.md)), distillation ([ftn-06](../08-fine-tuning/ftn-06-distillation-and-slms.md)), model selection ([api-06](../02-llm-apis/api-06-model-selection.md)) — was framed against server-side constraints: memory bandwidth, GPU cost per hour, latency SLOs measured in the hundreds of milliseconds. Edge deployment inherits all of those pressures *and adds new ones that don't exist server-side at all*: a hard device memory ceiling shared with every other app running (not a provisionable resource), a battery budget that makes sustained high compute utilization a real user-experience cost, thermal throttling that can degrade performance mid-session as the device heats up, and hugely heterogeneous hardware (this year's flagship phone versus a three-year-old mid-range one) that a server fleet, provisioned to a known spec, never has to accommodate. **The engineering discipline isn't "apply the same techniques a bit more aggressively," it's recognizing that edge deployment is optimizing against a different, harsher constraint surface entirely**, which is why it gets its own chapter rather than a paragraph in [prd-03](../06-production/prd-03-inference-optimization.md).
 
 ## How the compression toolkit compounds for edge targets
 
-**Quantization and distillation, covered separately in [prd-03](../06-production/prd-03-inference-optimization.md) and [ftn-06](ftn-06-distillation-and-slms.md) as independent techniques with independent motivations, are typically both applied together and pushed harder for edge deployment than either would be for a server-side deployment.** A server-side quantization decision weighs a modest latency/cost gain against a modest quality cost; an edge deployment decision is often binary — the model either fits in the device's memory ceiling at a given quantization level, or it doesn't run at all, which changes quantization from an optimization to a hard feasibility gate.
+**Quantization and distillation, covered separately in [prd-03](../06-production/prd-03-inference-optimization.md) and [ftn-06](../08-fine-tuning/ftn-06-distillation-and-slms.md) as independent techniques with independent motivations, are typically both applied together and pushed harder for edge deployment than either would be for a server-side deployment.** Server-side, quantization is already a large lever and memory fit can be a gate too — but there you can usually provision a bigger accelerator or shard the model. On a device you cannot, so the edge decision is often binary — the model either fits in the device's memory ceiling at a given quantization level, or it doesn't run at all, which changes quantization from an optimization to a hard feasibility gate.
 
-**This is also where distillation's narrow-task framing from [ftn-06](ftn-06-distillation-and-slms.md) becomes not just cost-effective but often the only viable option**: a general-purpose large model has no path onto most edge hardware regardless of quantization level, but a small model distilled for a specific, narrow on-device task — voice command parsing, on-device text prediction, a specific classification task — can fit comfortably, because the distillation process already discarded the general capability the edge deployment could never have hosted anyway.
+**This is also where distillation's narrow-task framing from [ftn-06](../08-fine-tuning/ftn-06-distillation-and-slms.md) becomes not just cost-effective but often the only viable option**: a general-purpose large model has no path onto most edge hardware regardless of quantization level, but a small model distilled for a specific, narrow on-device task — voice command parsing, on-device text prediction, a specific classification task — can fit comfortably, because the distillation process already discarded the general capability the edge deployment could never have hosted anyway.
 
-**Purpose-built small foundation models** — like Apple's on-device foundation models[^apple-oss-foundation] and Google's Gemini Nano[^gemini-nano] — represent a further step: rather than distilling a general model down and hoping it fits, these are designed from the outset with edge deployment as a first-class constraint, trading breadth of capability for a genuinely different point on the size/capability curve than a compressed version of a large model would land on. Runtime frameworks like llama.cpp[^gerganov-llamacpp] have separately made running open-weight models efficiently on consumer hardware substantially more accessible, closing part of the gap between "research capability" and "actually runs on a phone."
+**Platform foundation models** — Apple's on-device foundation model and Google's Gemini Nano — show this same compression stack run end to end by the platform vendor, co-designed with its own hardware. Gemini Nano's two original sizes (1.8B and 3.25B parameters) were distilled from larger Gemini models and quantized to 4 bits for deployment.[^gemini-report] Apple's roughly 3B-parameter on-device model was pruned from a larger model and trained with distillation,[^apple-afm] then compressed to a mix of 2- and 4-bit weights (about 3.7 bits per weight on average), with LoRA adapters to hold accuracy.[^apple-intro] For an application engineer the practical point is that these ship as system models that apps call through OS APIs — Apple's Foundation Models framework, and Android's AICore service and ML Kit GenAI APIs[^gemini-nano] — so the alternative to compressing a model yourself is often to use the one already on the device: no download and hardware-tuned, but a model and update schedule you don't control, in versions that differ from device to device.[^gemini-nano] Runtime frameworks like llama.cpp[^gerganov-llamacpp] have separately made running open-weight models efficiently on consumer hardware substantially more accessible, closing part of the gap between "research capability" and "actually runs on a phone."
 
-*The compression stack for edge deployment — quantization and distillation compounding, sometimes replaced entirely by a purpose-built small model:*
+*The compression stack for edge deployment — quantization and distillation compounding, or the same stack already run by the platform vendor:*
 
 ```mermaid
 graph TD
@@ -71,7 +83,7 @@ graph TD
   B --> C[Task-specific smaller model]
   C --> D{Quantization:<br/>reduce precision}
   D --> E[Edge-deployable artifact]
-  F[Purpose-built small<br/>foundation model] -.alternative path,<br/>designed for edge from the start.-> E
+  F[Platform model on the device<br/>vendor-distilled and quantized] -.alternative path:<br/>call it through OS APIs.-> E
 ```
 
 ## The two advantages that motivate the effort
@@ -88,22 +100,22 @@ This is directly [prd-05](../06-production/prd-05-cost-engineering.md)'s routing
 
 ## Production engineering perspective
 
-- **Treat the device memory and battery/thermal budget as hard feasibility gates**, not optimization targets to approach asymptotically — an edge deployment decision is often binary (fits or doesn't), unlike a server-side latency/cost trade-off that can be tuned incrementally.
+- **Treat the device memory and battery/thermal budget as hard feasibility gates**, not optimization targets to approach asymptotically — an edge deployment decision is often binary (fits or doesn't), unlike a server-side deployment, where you can usually provision more memory.
 - **Compound distillation and quantization deliberately for edge targets**, pushing both harder than a server-side deployment would typically warrant, given the tighter constraint.
-- **Evaluate purpose-built small foundation models as an alternative to compressing a general model down**, particularly for capability needs a distilled-and-quantized general model can't comfortably meet within the edge budget.
+- **Evaluate the platform's on-device model before compressing your own**, particularly for common tasks it already handles (summarizing, rewriting, extraction) — you trade control over the model, its version and its update timing for no download and hardware tuning, so pin its behavior with your own eval on the devices you support.
 - **Default to hybrid cloud-edge routing** for most production features, scoping the on-device model to a specific, well-validated task and escalating to cloud for anything beyond it — the routing trigger needs the same validation rigor [prd-05](../06-production/prd-05-cost-engineering.md) requires for any cascade.
 - **Test against realistic hardware heterogeneity**, not just the newest flagship device — a model that performs acceptably on this year's top-tier phone may be infeasible on the actual distribution of devices your user base runs.
 - **Scope the privacy claim precisely**: on-device processing removes the transmission-related privacy surface specifically, and still needs [sec-03](../07-safety-security/sec-03-privacy-compliance.md)'s general PII discipline applied to on-device logs, caches, and any local storage.
 
 ## Historical evolution
 
-**2020–2022:** on-device language model deployment is largely limited to small, narrow-task models — keyboard prediction, simple voice commands — well below the capability of contemporary server-hosted large models, reflecting how far edge hardware constraints trailed frontier model scale. **2023:** as quantization and PEFT techniques mature ([ftn-02](ftn-02-fine-tuning-methods.md)), and as consumer hardware (particularly newer phone chipsets with dedicated neural processing units) gains more on-device compute capability, meaningfully more capable models become edge-deployable, though still well behind server-hosted frontier capability. **2023–2024:** runtime frameworks like llama.cpp mature into genuinely accessible tools for running open-weight models efficiently on consumer hardware, substantially lowering the engineering barrier to edge experimentation.[^gerganov-llamacpp] **2024:** major platform vendors ship purpose-built, on-device-first foundation models as a first-class product feature — Apple's on-device foundation models and Google's Gemini Nano both represent models designed from the outset for the edge constraint rather than compressed after the fact — establishing hybrid cloud-edge routing as the mainstream production pattern rather than a niche optimization.[^apple-oss-foundation][^gemini-nano] **2024–present:** the gap between edge-deployable and server-hosted capability continues to narrow but remains substantial for general-purpose tasks, keeping hybrid routing (rather than pure edge deployment) the dominant production pattern, and keeping this area's tooling and capability boundary evolving quickly enough to warrant this chapter's experimental status.
+**2020–2022:** on-device language model deployment is largely limited to small, narrow-task models — keyboard prediction, simple voice commands — well below the capability of contemporary server-hosted large models, reflecting how far edge hardware constraints trailed frontier model scale. **2023:** as quantization ([prd-03](../06-production/prd-03-inference-optimization.md)) and parameter-efficient fine-tuning ([ftn-02](../08-fine-tuning/ftn-02-fine-tuning-methods.md)) mature, and as consumer hardware (particularly newer phone chipsets with dedicated neural processing units) gains more on-device compute capability, meaningfully more capable models become edge-deployable, though still well behind server-hosted frontier capability. **2023–2024:** runtime frameworks like llama.cpp mature into genuinely accessible tools for running open-weight models efficiently on consumer hardware, substantially lowering the engineering barrier to edge experimentation.[^gerganov-llamacpp] **2023–2024:** platform vendors ship on-device foundation models as system features — Google's Gemini Nano (announced December 2023 with the Gemini 1.0 family) and Apple's on-device model (announced June 2024) — each distilled from a larger in-house model and aggressively quantized for the vendor's own hardware.[^gemini-report][^apple-afm] **2025:** both vendors open these system models to third-party apps (Apple's Foundation Models framework; Android's ML Kit GenAI APIs on AICore), making hybrid cloud-edge routing a mainstream pattern rather than a niche optimization.[^gemini-nano] **2024–present:** the gap between edge-deployable and server-hosted capability continues to narrow but remains substantial for general-purpose tasks, keeping hybrid routing (rather than pure edge deployment) the dominant production pattern, and keeping this area's tooling and capability boundary evolving quickly enough to warrant this chapter's experimental status.
 
 ## Common misconceptions
 
 - **"Edge deployment is just server-side optimization applied harder."** The constraint surface is categorically different — device memory ceiling, battery/thermal budget, hardware heterogeneity — not merely a stricter version of server-side latency/cost trade-offs.
 - **"On-device processing solves privacy entirely."** It eliminates the transmission-related privacy surface specifically; on-device logs, caches, and local storage still need the general PII discipline sec-03 established.
-- **"A quantized, distilled version of a large model is always the right approach for edge."** Purpose-built small foundation models designed for edge from the outset are often a better-fitting alternative than compressing a general-purpose large model down after the fact.
+- **"You always have to compress and ship your own edge model."** For common tasks, the platform's on-device model — already distilled and quantized by the vendor and co-designed with its hardware — is often the better-fitting choice, at the cost of control over the model and its updates.
 - **"Once a model runs on the newest flagship device, it's edge-ready."** Production edge deployment needs testing against realistic hardware heterogeneity across the actual device distribution your users have, not just the newest hardware.
 - **"Pure on-device deployment is the goal to work toward."** For most production features today, hybrid cloud-edge routing — not pure on-device — is the pragmatic, capability-preserving default, given how much general capability edge constraints still sacrifice.
 
@@ -113,12 +125,12 @@ This is directly [prd-05](../06-production/prd-05-cost-engineering.md)'s routing
 - **Testing only against flagship hardware** — a model that performs acceptably on the newest device may be infeasible across the real, heterogeneous device distribution in production. *Fix:* test against a realistic hardware spread, not just the best-case device.
 - **An unvalidated hybrid-routing escalation trigger** — either escalates too often (losing offline/privacy/latency benefits) or too rarely (serving degraded local output silently on tasks beyond the local model's scope). *Fix:* the same routing-trigger validation rigor prd-05 requires for any cascade.
 - **Overclaiming the privacy benefit of on-device processing** — treating "it's on-device" as a complete privacy solution rather than a specific, real improvement to the transmission surface only. *Fix:* apply sec-03's general PII discipline to on-device storage and logs too.
-- **The central trade-off:** capability versus deployability. A purpose-built or heavily-compressed edge model trades general capability for the ability to run at all within the device constraint — the right scope for that trade is a narrow, well-validated task, not an attempt to replicate server-side general capability on-device.
+- **The central trade-off:** capability versus deployability. A heavily-compressed edge model, yours or the platform's, trades general capability for the ability to run at all within the device constraint — the right scope for that trade is a narrow, well-validated task, not an attempt to replicate server-side general capability on-device.
 
 ## Best practices
 
 - Treat device memory, battery, and thermal budgets as hard feasibility gates, not soft optimization targets.
-- Compound distillation and quantization deliberately, and evaluate purpose-built small foundation models as an alternative path.
+- Compound distillation and quantization deliberately, and evaluate the platform's on-device model before shipping your own.
 - Default to hybrid cloud-edge routing, scoping the on-device model to a specific, validated task and escalating to cloud for anything beyond it.
 - Validate the routing escalation trigger explicitly — measure over- and under-escalation, don't assume a threshold works.
 - Test against a realistic spread of device hardware, not just the newest or highest-spec device available.
@@ -143,7 +155,7 @@ This is directly [prd-05](../06-production/prd-05-cost-engineering.md)'s routing
 
 4. **"Why do most production systems land on hybrid cloud-edge routing rather than pure on-device deployment?"** — Model answer: because edge hardware constraints still sacrifice substantial general capability relative to a server-hosted large model, and hybrid routing captures most of the on-device advantages — offline capability, privacy for the transmission surface, low latency — for the well-scoped subset of tasks the local model can handle, while preserving full capability via cloud escalation for anything beyond that scope. It's the same routing-cascade logic prd-05 established for cost, applied at the edge-versus-cloud boundary, and it needs the same validated escalation trigger rather than an assumed split.
 
-5. **"When would you choose a purpose-built small foundation model over compressing a general-purpose model for edge deployment?"** — Model answer: when the capability need is broad enough, or the edge constraint tight enough, that a distilled-and-quantized version of a general model can't comfortably fit within the device budget at acceptable quality — a purpose-built small model, designed from the outset for the edge constraint rather than compressed after training at a larger scale, often lands at a genuinely better point on the size/capability curve for that specific target than a compressed general model would. I'd evaluate both concretely against my task's eval suite rather than assuming one approach is categorically better.
+5. **"When would you use the platform's on-device model rather than compressing and shipping your own?"** — Model answer: when the task is one the platform model handles well — summarizing, rewriting, extraction — and I value no download, hardware tuning and the vendor's ongoing optimization over control. Those models are themselves distilled and quantized by the vendor (Gemini Nano from larger Gemini models, Apple's from a larger in-house model), so the choice isn't compression versus none; it's who runs the compression and who controls the result. The costs are a model and update schedule I don't control and versions that differ across devices, so I'd pin behavior with my own eval suite run on the device range I support, and compare it against a distilled-and-quantized open model I ship myself.
 
 ## Exercises and mini-project
 
@@ -153,16 +165,16 @@ This is directly [prd-05](../06-production/prd-05-cost-engineering.md)'s routing
 2. Design the hybrid routing logic for an on-device feature: what stays local, what escalates to cloud, and what's the validated trigger?
 3. Explain precisely what on-device processing does and doesn't solve for privacy, using sec-03's PII-surface framework.
 4. Design a hardware-heterogeneity test plan for an edge-deployed model, covering more than just the newest available device.
-5. Argue for purpose-built small foundation model versus compressed general model for a specific on-device task of your choosing.
+5. For a specific on-device task of your choosing, argue for calling the platform's on-device model or shipping your own distilled-and-quantized model.
 
 **Mini-project: scope and design (or prototype) an edge deployment.** For a narrow task of your choosing: (a) define the device memory and latency budget you're targeting; (b) decide the compression approach — distillation, quantization, or a purpose-built small model — and justify it against the budget; (c) design the hybrid-routing logic for when the task exceeds the local model's scope, including what signal triggers escalation; (d) if you have access to a runtime like llama.cpp and appropriate hardware, actually run a small quantized model locally and measure its resource usage; (e) write a short memo on what you'd test across device heterogeneity before shipping. Target: 3 hours (more if actually running local inference). Success criterion: an explicit, justified compression and routing design — not just "make it smaller" — with a concrete escalation trigger.
 
-**Capstone extension:** this chapter combines [ftn-06](ftn-06-distillation-and-slms.md)'s distillation and [prd-03](../06-production/prd-03-inference-optimization.md)'s quantization for the edge constraint specifically, reuses [prd-05](../06-production/prd-05-cost-engineering.md)'s routing-cascade pattern for hybrid cloud-edge design, and applies [sec-03](../07-safety-security/sec-03-privacy-compliance.md)'s privacy framework precisely to the on-device claim.
+**Capstone extension:** this chapter combines [ftn-06](../08-fine-tuning/ftn-06-distillation-and-slms.md)'s distillation and [prd-03](../06-production/prd-03-inference-optimization.md)'s quantization for the edge constraint specifically, reuses [prd-05](../06-production/prd-05-cost-engineering.md)'s routing-cascade pattern for hybrid cloud-edge design, and applies [sec-03](../07-safety-security/sec-03-privacy-compliance.md)'s privacy framework precisely to the on-device claim.
 
 ## Revision summary
 
 - Edge deployment faces a **categorically different constraint surface** than server-side inference — hard device memory ceilings, battery/thermal budgets, and hardware heterogeneity that don't exist in a provisioned server environment, often making feasibility binary rather than a tunable trade-off.
-- **Distillation and quantization compound** for edge targets, pushed harder than server-side use would typically warrant; **purpose-built small foundation models** (Apple's on-device models, Gemini Nano) offer an alternative path designed for the constraint from the outset rather than compressed after the fact.
+- **Distillation and quantization compound** for edge targets, pushed harder than server-side use would typically warrant; **platform foundation models** (Apple's on-device model, Gemini Nano) are that same stack run by the vendor and exposed through OS APIs — no download, but a model you don't control.
 - The two genuine advantages motivating edge effort: **offline capability** (no network dependency) and **privacy by architecture** (eliminates the transmission surface specifically — not a complete privacy solution on its own).
 - **Hybrid cloud-edge routing** is the dominant production pattern — a narrow, validated on-device task handled locally, escalating to cloud for anything beyond scope — the same cascade logic as [prd-05](../06-production/prd-05-cost-engineering.md)'s cost routing, requiring the same validated escalation trigger.
 - This area's tooling and capability boundary are still moving quickly, warranting the same experimental-status caution as the rest of Module 9.
@@ -173,15 +185,18 @@ This is directly [prd-05](../06-production/prd-05-cost-engineering.md)'s routing
 |---|---|
 | What makes edge deployment categorically different from server-side optimization? | Hard device memory ceiling, battery/thermal budget, hardware heterogeneity — often a binary feasibility gate, not a tunable trade-off. |
 | How do distillation and quantization compound for edge? | Distillation narrows the task to something small enough to be worth deploying; quantization then fits it into the device's hard memory ceiling. |
-| What's an alternative to compressing a general model for edge? | Purpose-built small foundation models designed for the edge constraint from the outset (e.g., Apple's on-device models, Gemini Nano). |
+| What's the alternative to compressing and shipping your own edge model? | Calling the platform's on-device model (Apple's foundation model, Gemini Nano) — itself vendor-distilled and quantized — through OS APIs, trading control for no download. |
 | What does on-device processing solve for privacy, precisely? | The transmission-related privacy surface specifically — not every privacy consideration (logs/caches still need sec-03's discipline). |
 | What's the dominant production pattern: pure edge or hybrid? | Hybrid cloud-edge routing — narrow validated local task, escalate to cloud beyond that scope. |
 | Why must the hybrid-routing trigger be validated, not assumed? | An untuned trigger either loses offline/privacy benefits (over-escalates) or silently serves degraded output (under-escalates). |
 | What testing gap does "it works on my flagship phone" miss? | Realistic hardware heterogeneity across the actual production device distribution. |
+| Why can't server-side optimization match on-device inference's offline advantage? | On-device models work with no network at all; the constraint being solved is availability, not latency, so no server-side optimization can match it. |
+| Why is distillation often the only viable path onto edge hardware? | A general large model won't fit most edge devices; a model distilled for the narrow on-device task can, because it only needs the capability that task uses. |
 
 ## Further reading
 
-- **Official docs:** Apple's on-device foundation models overview[^apple-oss-foundation] and Google's Gemini Nano page[^gemini-nano] — concrete, current purpose-built small model examples.
+- **Official docs:** Android's Gemini Nano developer guide[^gemini-nano] — how an app reaches a system model through AICore and ML Kit.
+- **Papers:** Apple's foundation-model report[^apple-afm] and the Gemini 1.0 report[^gemini-report] — how two platform vendors actually built their on-device models (pruning, distillation, quantization); Apple's announcement post[^apple-intro] for the low-bit palettization and adapter details.
 - **Tools:** llama.cpp[^gerganov-llamacpp] — the widely-used runtime for efficient local/edge inference of open-weight models.
 - **Tutorials:** run the mini-project's local-inference measurement if you have access to appropriate hardware — the hard-feasibility-gate framing is far more concrete once you've watched a model fail to load rather than just gradually slow down.
 
@@ -191,10 +206,12 @@ This is directly [prd-05](../06-production/prd-05-cost-engineering.md)'s routing
 2. Walk through how distillation and quantization compound specifically for an edge deployment target, and where the decision becomes binary.
 3. Precisely scope what on-device processing solves for privacy and what it doesn't, using sec-03's framework.
 4. Design the hybrid cloud-edge routing logic for a task of your choosing, including a validated escalation trigger.
-5. Argue for when a purpose-built small foundation model would outperform a compressed general-purpose model for an edge target.
+5. Argue for when the platform's on-device model is a better choice than shipping your own compressed model, and what you give up.
 
 ## Sources
 
-[^apple-oss-foundation]: [T1] Apple (2024). "Apple Intelligence Foundation Language Models." https://machinelearning.apple.com/research/apple-intelligence-foundation-language-models (accessed 2026-07-27)
-[^gemini-nano]: [T1] Google DeepMind. "Gemini Nano." https://deepmind.google/technologies/gemini/nano/ (accessed 2026-07-27)
+[^apple-afm]: [T2] Gunter et al. (2024). "Apple Intelligence Foundation Language Models." Apple. arXiv:2407.21075. https://arxiv.org/abs/2407.21075 (accessed 2026-10-08)
+[^apple-intro]: [T4] Apple Machine Learning Research (2024). "Introducing Apple's On-Device and Server Foundation Models." https://machinelearning.apple.com/research/introducing-apple-foundation-models (accessed 2026-10-08)
+[^gemini-report]: [T2] Gemini Team, Google (2023). "Gemini: A Family of Highly Capable Multimodal Models." arXiv:2312.11805. https://arxiv.org/abs/2312.11805 (accessed 2026-10-08)
+[^gemini-nano]: [T1] Android Developers. "Gemini Nano." https://developer.android.com/ai/gemini-nano (accessed 2026-10-08)
 [^gerganov-llamacpp]: [T4] Gerganov, G. et al. "llama.cpp." GitHub. https://github.com/ggml-org/llama.cpp (accessed 2026-07-27)

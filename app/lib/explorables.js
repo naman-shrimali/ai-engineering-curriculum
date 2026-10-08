@@ -47,7 +47,7 @@ export const EXPLORABLES = [
     id: 'lora', chapter: 'ftn-02', anchor: 'lora-low-rank-adaptation',
     title: 'LoRA footprint — what rank buys you',
     blurb: 'Size a weight matrix and a rank and compare the trainable parameters of full fine-tuning and LoRA.',
-    basis: ['so the number of trainable parameters scales with', 'Output = Wx + BAx', 'rank is a hyperparameter to tune rather than a fixed constant'],
+    basis: ['so the number of trainable parameters scales with', 'Output = Wx + (α/r)·BAx', 'rank is a hyperparameter to tune rather than a fixed constant'],
     mount: lora,
   },
 ];

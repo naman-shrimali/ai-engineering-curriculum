@@ -92,7 +92,7 @@ graph LR
   CAN -->|regression| RB[Rollback = git revert]
 ```
 
-Notes that save incidents: cache implications ride along (a stable-prefix change is a deliberate cache invalidation — [api-05](../modules/02-llm-apis/api-05-streaming-caching-batch.md); deploy at low-traffic windows for big prefixes); config changes and code changes deploy separately (so rollback is unambiguous); and few-shot examples are config (the api-02 lesson teams relearn quarterly).
+Notes that save incidents: cache implications ride along (a stable-prefix change is a deliberate cache invalidation[^anthropic-caching] — [api-05](../modules/02-llm-apis/api-05-streaming-caching-batch.md); deploy at low-traffic windows for big prefixes); config changes and code changes deploy separately (so rollback is unambiguous); and few-shot examples are config (the api-02 lesson teams relearn quarterly).
 
 ## Lifecycle 2: the model adoption
 

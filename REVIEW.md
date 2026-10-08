@@ -6,6 +6,28 @@ Staff-engineer / educator / interview-coach review of the written corpus as of 2
 
 Priorities: **P0** ship-blocker · **P1** should-fix-before-scaling · **P2** quality polish · **P3** nice-to-have.
 
+## Status — 2026-10-08
+
+Every item below has been resolved or deliberately kept open. The original review text is preserved underneath for the record.
+
+| Item | Status |
+|---|---|
+| P0-1 agt-01 stub | **Resolved** — agt-01 is a full chapter; all 61 chapters are written. |
+| P1-1 glossary linking | **Resolved** — CONVENTIONS §5 now describes what the app does: it links the first prose use of each glossary term per section automatically, with hover cards. Manual links are optional. |
+| P1-2 forward links | **Resolved** — with all 61 chapters written there are no forward links left; `scripts/validate.py` fails CI on any broken link. |
+| P2-1 napkin-math duplication | **Resolved** — fnd-05 is the canonical KV derivation; fnd-02's memory block now points forward to it, and api-07 and eng-12 already cite it. |
+| P2-2 T3 under-cited | **Open, improved** — the full 61-chapter corpus now cites 10 T3 sources (books and course material), against 3 in the 19-chapter snapshot. Still a target for the next evergreen review. |
+| P2-3 fnd-05 "larger than weights" | **Resolved** — the line now reads 16 GiB ≈ 17 GB of cache against 16 GB of weights. |
+| P2-4 worked examples | **Resolved** — a concrete double-descent example (fnd-02), "one preference pair, three methods" (fnd-07), and the RoPE clock-hands intuition (fnd-05). |
+| P3-1 T5 justifications | **Resolved** — every T5 citation carries its bracketed justification. |
+| P3-2 caption spacing | **Accepted** as is (standard Markdown, renders correctly). |
+| P3-3 dependency graph | **Resolved** — `scripts/check-dependency-graph.py` asserts that manifest.yaml, `curriculum/dependency-graph.md` and chapter frontmatter agree (91 edges), and runs in CI. |
+
+A separate accuracy audit of Modules 6–9 (2026-10-08) corrected technical errors, misattributed cross-references and unverifiable sources in 17 chapters plus prd-03; see CHANGELOG.
+
+---
+
+
 ---
 
 ## P0 — Ship blocker

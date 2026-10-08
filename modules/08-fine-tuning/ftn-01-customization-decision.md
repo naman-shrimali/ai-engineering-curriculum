@@ -7,12 +7,13 @@ related_ids: [rag-05, api-06, ftn-02, ftn-03, prd-05]
 keywords:
   - fine-tuning decision
   - prompt engineering ceiling
-  - RAG versus fine-tuning
+  - rag versus fine-tuning
   - customization ladder
   - decision framework
   - total cost of ownership
   - maintenance burden
   - when to fine-tune
+  - continued pretraining
 summary: >-
   The decision that should precede every fine-tuning project and rarely gets
   asked explicitly. Covers the customization ladder from prompting through
@@ -23,7 +24,7 @@ summary: >-
 difficulty: 2
 est_minutes: 150
 status: evolving
-volatility: medium
+volatility: mixed
 last_reviewed: 2026-07-19
 sources:
   - key: openai-finetuning-guide
@@ -33,17 +34,23 @@ sources:
     url: https://platform.openai.com/docs/guides/fine-tuning
     accessed: 2026-07-19
   - key: anthropic-finetuning
-    tier: 1
-    title: "Fine-tuning"
+    tier: 4
+    title: "Fine-tune Claude 3 Haiku in Amazon Bedrock"
     org: Anthropic
-    url: https://docs.anthropic.com/en/docs/build-with-claude/fine-tuning
-    accessed: 2026-07-19
+    url: https://www.anthropic.com/news/fine-tune-claude-3-haiku
+    accessed: 2026-10-08
   - key: lewis-rag
-    tier: 1
+    tier: 2
     title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
     org: arXiv
     url: https://arxiv.org/abs/2005.11401
     accessed: 2026-07-19
+  - key: gururangan-dapt
+    tier: 2
+    title: "Don't Stop Pretraining: Adapt Language Models to Domains and Tasks"
+    org: Allen Institute for AI / University of Washington
+    url: https://arxiv.org/abs/2004.10964
+    accessed: 2026-10-08
 ---
 
 # The Customization Decision
@@ -56,11 +63,13 @@ Every customization technique below fine-tuning on the ladder — prompting, few
 
 ## The customization ladder
 
-**Prompting and few-shot examples** are the cheapest rung: instructions and demonstrations placed directly in context, iterated in seconds, requiring no training infrastructure at all. [api-02](../02-llm-apis/api-02-prompting-fundamentals.md) established the ceiling on how far this goes — a well-engineered prompt with good examples solves a surprisingly large fraction of customization problems people initially assume need fine-tuning, and it's always worth exhausting first because the iteration loop is nearly instant and the cost is nearly zero.
+**Prompting and few-shot examples** are the cheapest rung: instructions and demonstrations placed directly in context, iterated in seconds, requiring no training infrastructure at all. [api-02](../02-llm-apis/api-02-prompt-engineering.md) covers how to push prompting as far as it goes — clear instructions, well-chosen examples, structured output, eval-driven iteration — and a well-engineered prompt solves a surprisingly large fraction of customization problems people initially assume need fine-tuning. It's always worth exhausting first because the iteration loop is nearly instant and the cost is nearly zero.
 
-**RAG** ([rag-01](../03-retrieval/rag-01-what-is-rag.md) through [rag-08](../03-retrieval/rag-08-rag-frontiers.md)) is the next rung: injecting relevant external knowledge into context at inference time, retrieved dynamically per query.[^lewis-rag] This is the right tool specifically for a **knowledge problem** — the model doesn't have the information it needs, and that information changes over time or is too large to fit in a static prompt. RAG's defining advantage for this decision is that the knowledge stays current without retraining: update the index, and the next query sees the update immediately, a property no fine-tuned model can match without a full retraining cycle.
+**RAG** ([rag-01](../03-retrieval/rag-01-context-engineering.md) through [rag-08](../03-retrieval/rag-08-rag-frontiers.md)) is the next rung: injecting relevant external knowledge into context at inference time, retrieved dynamically per query.[^lewis-rag] This is the right tool specifically for a **knowledge problem** — the model doesn't have the information it needs, and that information changes over time or is too large to fit in a static prompt. RAG's defining advantage for this decision is that the knowledge stays current without retraining: update the index, and the next query sees the update immediately, a property no fine-tuned model can match without a full retraining cycle.
 
 **Fine-tuning** ([ftn-02](ftn-02-fine-tuning-methods.md) onward) sits at the top of the ladder, and it's the right tool specifically for a **behavior problem**: the model has the requisite knowledge or capability but doesn't produce output in the right *format*, *style*, *tone*, or doesn't reliably follow a narrow, specialized task pattern despite prompting and examples being exhausted. Fine-tuning teaches the model to do something differently, not to know something new — which is precisely why it's the wrong tool when the actual gap is missing information.
+
+**Off the ladder: continued pretraining.** One case sits beyond the ladder. When a domain's *language itself* is foreign to the model — dense clinical, legal or scientific text, a niche programming language — continuing next-token training on a large unlabeled domain corpus can help where SFT can't, because it is the form of training that shifts how the model reads the domain; a second, in-domain pretraining phase has been shown to improve downstream tasks in domains as different as biomedical papers and product reviews.[^gururangan-dapt] It is the heavyweight exception ([fnd-07](../01-foundations/fnd-07-post-training.md)): far more data and compute than SFT, a model that usually needs instruction tuning again afterwards, and only some platforms offer it. Reach for it when retrieval plus a strong general model demonstrably fails on the domain's language — never as a way to load a knowledge base, because changeable or private facts still belong in retrieval.
 
 *The decision ladder, moving to a more expensive rung only when the cheaper one demonstrably fails to close the gap:*
 
@@ -80,7 +89,7 @@ graph TD
 
 The diagnostic question this chapter centers, because it's the one most teams skip: **is the failure a knowledge gap or a behavior gap?** A model that confidently gives wrong or outdated information has a knowledge gap — more context (RAG) fixes it. A model that has the right information available (even stated plainly in the prompt) but still won't produce the required output format, consistently drifts in tone, or fails at a narrow specialized task pattern despite explicit instructions and examples has a behavior gap — this is fine-tuning's actual territory.
 
-**A useful test before committing to fine-tuning**: can you get the desired behavior with a sufficiently long, carefully constructed few-shot prompt, even if that prompt is impractically expensive to run on every request? If yes, the model *can* do it — the problem is getting it to do so reliably and cheaply, which is a genuine fine-tuning use case (baking the pattern into weights removes the need to pay for the long prompt every call, connecting directly to [prd-05](../06-production/prd-05-cost-engineering.md)'s cost engineering). If no — if the model genuinely cannot produce the desired behavior even with extensive demonstration — that's a stronger signal fine-tuning is needed to actually teach a new capability, and a signal worth weighing against whether a larger or different base model might simply already have that capability without any training at all.
+**A useful test before committing to fine-tuning**: can you get the desired behavior with a sufficiently long, carefully constructed few-shot prompt, even if that prompt is impractically expensive to run on every request? If yes, the model *can* do it — the problem is getting it to do so reliably and cheaply, which is a genuine fine-tuning use case: baking the pattern into weights removes the long prompt from every call — though weigh that against prompt caching, which already discounts a static few-shot block reused across requests ([prd-05](../06-production/prd-05-cost-engineering.md)). If no — if the model cannot produce the behavior even with extensive demonstration — be careful: that is *not* a clean signal that fine-tuning will teach it. Fine-tuning shapes behavior the base model can already express ([fnd-07](../01-foundations/fnd-07-post-training.md)); it rarely installs a capability the model lacks. Try a stronger or different base model, or decompose the task, first — and fine-tune only if a held-out eval shows the narrow task actually improves.
 
 ## The total cost of ownership fine-tuning actually carries
 
@@ -89,6 +98,8 @@ This is the part of the decision most optimistic estimates skip, and the reason 
 **Data cost.** Fine-tuning needs a labeled dataset built to the standard [ftn-03](ftn-03-data-for-fine-tuning.md) will develop in depth — and building that dataset well is often the single largest cost in a fine-tuning project, larger than the actual training compute, a fact that surprises teams who budget for GPU time and treat data collection as an afterthought.
 
 **Iteration cost.** A prompt change is testable in seconds; a fine-tuning run is testable in hours to days, depending on data size and infrastructure — which means the entire feedback loop for improving a fine-tuned model's behavior is dramatically slower than for a prompted one, and mistakes discovered late in that loop are expensive to fix.
+
+**Privacy cost.** Whatever personal data goes into a training set goes into the weights, and there is no clean way to take it back out: a later deletion request means excluding that data from the *next* training run, not editing the current model ([sec-03](../07-safety-security/sec-03-privacy-compliance.md)). Weigh this explicitly: redact or exclude personal data from fine-tuning sets by default, and keep per-user data in retrieval, where deleting a record actually deletes it.
 
 **Maintenance cost, the most commonly underestimated.** A fine-tuned model is now a versioned artifact your team owns: when the underlying base model improves (a new model generation ships), the fine-tuned model doesn't automatically inherit that improvement — someone has to decide whether to re-fine-tune on the new base, re-validate the fine-tuned behavior still holds, and manage the resulting proliferation of model versions, each with its own eval history. This is a standing organizational commitment, not a one-time project cost, and it should be weighed against RAG's comparatively low maintenance burden (update the index; the underlying model can be swapped more freely since behavior isn't baked into weights).
 
@@ -164,14 +175,15 @@ This is the part of the decision most optimistic estimates skip, and the reason 
 
 **Mini-project: run the decision framework on a real need.** Pick a customization problem — real, from your capstone, or a plausible scenario: (a) diagnose it explicitly as a knowledge gap, a behavior gap, or both; (b) attempt the cheapest applicable fix first (a better prompt, or a RAG pass if you have retrieval infrastructure) and measure whether it closes the gap; (c) if it doesn't, apply the long-prompt test and record the result; (d) write a one-page decision memo: what you tried, what worked or didn't, and whether fine-tuning is actually justified — including an honest estimate of the data-collection and maintenance cost you'd be signing up for. Target: 2 hours. Success criterion: a decision memo that either closes the gap with a cheaper technique, or makes a specific, evidence-based case for fine-tuning rather than a default assumption.
 
-**Capstone extension:** this chapter's ladder builds directly on [api-02](../02-llm-apis/api-02-prompting-fundamentals.md)'s prompting ceiling and [rag-05](../03-retrieval/rag-05-rag-pipeline.md)'s RAG pipeline; the cost analysis connects to [prd-05](../06-production/prd-05-cost-engineering.md); [ftn-02](ftn-02-fine-tuning-methods.md) picks up from here once fine-tuning is the justified choice.
+**Capstone extension:** this chapter's ladder builds directly on [api-02](../02-llm-apis/api-02-prompt-engineering.md)'s prompting practice and [rag-05](../03-retrieval/rag-05-rag-pipeline.md)'s RAG pipeline; the cost analysis connects to [prd-05](../06-production/prd-05-cost-engineering.md); [ftn-02](ftn-02-fine-tuning-methods.md) picks up from here once fine-tuning is the justified choice.
 
 ## Revision summary
 
 - The customization ladder, cheapest to most expensive: **prompting/few-shot** (instant iteration, changes context only) → **RAG** (dynamic external knowledge, stays current without retraining) → **fine-tuning** (changes weights, expensive, slow iteration).
 - The core diagnostic: is the gap a **knowledge problem** (RAG's territory) or a **behavior problem** — format, style, consistency despite the model having the information (fine-tuning's territory)?
-- The **long-prompt test**: if an impractically long few-shot prompt achieves the behavior, fine-tuning is a legitimate cost optimization; if it can't, weigh whether a different base model has the capability before training.
-- Fine-tuning's total cost of ownership is usually underestimated on two fronts: **data collection** (often the largest line item, larger than training compute) and **standing maintenance** (base-model upgrade cycles, re-validation, version proliferation — an ongoing commitment, not a one-time cost).
+- The **long-prompt test**: if an impractically long few-shot prompt achieves the behavior, fine-tuning is a legitimate cost optimization (net of prompt caching); if it can't, that is not a reason to fine-tune — try a stronger base model or decompose the task first.
+- **Off the ladder:** continued pretraining on unlabeled domain text is the heavyweight exception when the domain's language itself is foreign — not a way to load knowledge, which belongs in retrieval.
+- Fine-tuning's total cost of ownership is usually underestimated on three fronts: **data collection** (often the largest line item, larger than training compute), **privacy** (personal data in weights can't be cleanly deleted — redact it out of training sets), and **standing maintenance** (base-model upgrade cycles, re-validation, version proliferation — an ongoing commitment, not a one-time cost).
 - Fine-tuning and RAG are frequently **combined**, not mutually exclusive — each used for the specific problem (behavior vs. knowledge) it's actually suited to.
 
 ## Flashcards
@@ -185,11 +197,13 @@ This is the part of the decision most optimistic estimates skip, and the reason 
 | Why is RAG better than fine-tuning for changing facts? | RAG updates by re-indexing, visible next query; fine-tuned facts are baked into weights and need retraining to update. |
 | The most commonly underestimated fine-tuning cost? | Standing maintenance — base-model upgrade cycles, re-validation, version proliferation. |
 | Are fine-tuning and RAG mutually exclusive? | No — commonly combined: fine-tuning for consistent behavior, RAG for current knowledge. |
+| What is usually the largest cost in a fine-tuning project? | Building the labeled dataset to a usable quality bar, often larger than the training compute that budgets tend to focus on. |
+| What does it signal if a model can't produce the desired behavior even with an extensive few-shot prompt? | Not that fine-tuning will teach it — fine-tuning shapes behavior the model can already express. Try a stronger base model or decompose the task first. |
 
 ## Further reading
 
-- **Official docs:** OpenAI's[^openai-finetuning-guide] and Anthropic's[^anthropic-finetuning] fine-tuning guides — concrete, current guidance on when providers themselves recommend fine-tuning versus alternatives.
-- **Papers:** Lewis et al. (2020)[^lewis-rag] — the foundational RAG paper, useful context for why RAG became the default knowledge-customization tool this ladder assumes.
+- **Official docs:** OpenAI's fine-tuning guide[^openai-finetuning-guide] — concrete, current guidance on when a provider itself recommends fine-tuning versus alternatives; Anthropic's announcement of Claude 3 Haiku fine-tuning in Amazon Bedrock[^anthropic-finetuning] — an example of hosted fine-tuning offered through a cloud platform rather than the model provider's own API.
+- **Papers:** Lewis et al. (2020)[^lewis-rag] — the foundational RAG paper, useful context for why RAG became the default knowledge-customization tool this ladder assumes; Gururangan et al. (2020)[^gururangan-dapt] — the clearest evidence for when continued, in-domain pretraining pays.
 - **Tutorials:** run the mini-project's decision framework on a real need before starting any actual fine-tuning work — the framework is more convincing applied to your own problem than read in the abstract.
 
 ## Check your understanding
@@ -203,5 +217,6 @@ This is the part of the decision most optimistic estimates skip, and the reason 
 ## Sources
 
 [^openai-finetuning-guide]: [T1] OpenAI. "Fine-tuning." https://platform.openai.com/docs/guides/fine-tuning (accessed 2026-07-19)
-[^anthropic-finetuning]: [T1] Anthropic. "Fine-tuning." https://docs.anthropic.com/en/docs/build-with-claude/fine-tuning (accessed 2026-07-19)
-[^lewis-rag]: [T1] Lewis et al. (2020). "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks." arXiv:2005.11401. https://arxiv.org/abs/2005.11401 (accessed 2026-07-19)
+[^anthropic-finetuning]: [T4] Anthropic (2024). "Fine-tune Claude 3 Haiku in Amazon Bedrock." https://www.anthropic.com/news/fine-tune-claude-3-haiku (accessed 2026-10-08)
+[^lewis-rag]: [T2] Lewis et al. (2020). "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks." arXiv:2005.11401. https://arxiv.org/abs/2005.11401 (accessed 2026-07-19)
+[^gururangan-dapt]: [T2] Gururangan et al. (2020). "Don't Stop Pretraining: Adapt Language Models to Domains and Tasks." ACL 2020. arXiv:2004.10964. https://arxiv.org/abs/2004.10964 (accessed 2026-10-08)

@@ -58,6 +58,12 @@ sources:
     org: arXiv
     url: https://arxiv.org/abs/2501.12948
     accessed: 2026-07-09
+  - key: shao-grpo
+    tier: 2
+    title: "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models"
+    org: arXiv
+    url: https://arxiv.org/abs/2402.03300
+    accessed: 2026-10-08
   - key: sharma-sycophancy
     tier: 2
     title: "Towards Understanding Sycophancy in Language Models"
@@ -135,9 +141,11 @@ Maximize reward, *minus* a penalty on how far the policy's output distribution d
 
 ## DPO and the direct methods
 
-RLHF works but is heavy: two extra models in memory (reward model, reference), RL training instability (fnd-02's warnings, squared), and infrastructure few teams can run. **Direct Preference Optimization** collapsed the pipeline: a derivation shows the RLHF objective can be optimized *directly* on preference pairs with a simple classification-style loss — no reward model, no RL loop — by exploiting the fact that the policy itself implicitly defines a reward.[^rafailov-dpo] In practice: DPO-family methods (and a zoo of successors) deliver much of RLHF's benefit at a fraction of the complexity, which made preference tuning accessible far beyond frontier labs — including, eventually, to you (ftn-05 is the hands-on treatment).
+RLHF works but is heavy: up to three extra models in memory beside the policy (reward model, frozen reference, and — with PPO — a value model trained alongside), RL training instability (fnd-02's warnings, squared), and infrastructure few teams can run. **Direct Preference Optimization** collapsed the pipeline: a derivation shows the RLHF objective can be optimized *directly* on preference pairs with a simple classification-style loss — no reward model, no RL loop — by exploiting the fact that the policy itself implicitly defines a reward.[^rafailov-dpo] In practice: DPO-family methods (and a zoo of successors) deliver much of RLHF's benefit at a fraction of the complexity, which made preference tuning accessible far beyond frontier labs — including, eventually, to you (ftn-05 is the hands-on treatment).
 
 The honest trade-off map: DPO is simpler, stabler, and cheaper; classical RL retains advantages when you need online exploration (the model discovering *new* behaviors rather than reweighting existing ones) and when optimizing against verifiers rather than static preference datasets — which is exactly where the field went next.
+
+**One preference pair, three methods.** Take one prompt with a preferred response A and a rejected response B. *RLHF* uses the pair indirectly: it first trains a reward model so that r(A) > r(B), then runs RL (PPO) in which the policy generates *new* responses, the reward model scores them, and a KL penalty against the frozen reference model stops the policy drifting too far.[^ouyang-2022] *DPO* uses the pair directly and generates nothing: each loss step raises the policy's probability of A relative to the reference model and lowers that of B, weighted most when the policy currently ranks B above A — the reward model never exists.[^rafailov-dpo] *GRPO*, the RL method behind DeepSeek's reasoning models, needs no pair at all: for each prompt it samples a group of responses, scores each (often with a verifier), and pushes each response up or down by how its reward compares with the group's average — which removes the separate value model PPO has to train.[^shao-grpo][^deepseek-r1] Same goal — shift probability toward better responses — with different machinery: RLHF learns a reward and explores, DPO skips both, GRPO explores but replaces PPO's critic with the group itself.
 
 > **Volatile:** the preference-optimization method zoo (DPO variants, KTO, ORPO, GRPO-for-preferences, …) churns quarterly, and which method each frontier lab uses is mostly undisclosed. The stable knowledge: preference data is the fuel, KL-anchoring is the safety rail, direct methods democratized the stage. Method choice specifics live in ftn-05 and go stale fastest there.
 
@@ -294,5 +302,6 @@ What this layer means for systems you build on top:
 [^bai-cai-2022]: [T2] Bai et al. (2022). "Constitutional AI: Harmlessness from AI Feedback." arXiv:2212.08073. https://arxiv.org/abs/2212.08073 (accessed 2026-07-09)
 [^rafailov-dpo]: [T2] Rafailov et al. (2023). "Direct Preference Optimization: Your Language Model is Secretly a Reward Model." arXiv:2305.18290. https://arxiv.org/abs/2305.18290 (accessed 2026-07-09)
 [^deepseek-r1]: [T2] DeepSeek-AI (2025). "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning." arXiv:2501.12948. https://arxiv.org/abs/2501.12948 (accessed 2026-07-09)
+[^shao-grpo]: [T2] Shao et al. (2024). "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models" (introduces GRPO). arXiv:2402.03300. https://arxiv.org/abs/2402.03300 (accessed 2026-10-08)
 [^sharma-sycophancy]: [T2] Sharma et al. (2023). "Towards Understanding Sycophancy in Language Models." arXiv:2310.13548. https://arxiv.org/abs/2310.13548 (accessed 2026-07-09)
 [^lambert-rlhf-book]: [T4] Lambert, N. "RLHF Book" (online draft, continuously updated). https://rlhfbook.com/ (accessed 2026-07-09)

@@ -22,18 +22,18 @@ summary: >-
 difficulty: 3
 est_minutes: 165
 status: evolving
-volatility: high
+volatility: mixed
 last_reviewed: 2026-07-17
 sources:
   - key: anthropic-redteam
-    tier: 1
-    title: "Red teaming language models to reduce harms"
+    tier: 2
+    title: "Red Teaming Language Models to Reduce Harms: Methods, Scaling Behaviors, and Lessons Learned"
     org: Anthropic
     url: https://arxiv.org/abs/2209.07858
     accessed: 2026-07-17
   - key: openai-redteam
     tier: 1
-    title: "OpenAI's approach to external red teaming"
+    title: "OpenAI Red Teaming Network"
     org: OpenAI
     url: https://openai.com/index/red-teaming-network/
     accessed: 2026-07-17
@@ -43,6 +43,30 @@ sources:
     org: arXiv
     url: https://arxiv.org/abs/2202.03286
     accessed: 2026-07-17
+  - key: wei-jailbroken
+    tier: 2
+    title: "Jailbroken: How Does LLM Safety Training Fail?"
+    org: UC Berkeley
+    url: https://arxiv.org/abs/2307.02483
+    accessed: 2026-10-08
+  - key: anil-manyshot
+    tier: 2
+    title: "Many-shot Jailbreaking"
+    org: Anthropic
+    url: https://www.anthropic.com/research/many-shot-jailbreaking
+    accessed: 2026-10-08
+  - key: russinovich-crescendo
+    tier: 2
+    title: "Great, Now Write an Article About That: The Crescendo Multi-Turn LLM Jailbreak Attack"
+    org: Microsoft
+    url: https://arxiv.org/abs/2404.01833
+    accessed: 2026-10-08
+  - key: chao-pair
+    tier: 2
+    title: "Jailbreaking Black Box Large Language Models in Twenty Queries"
+    org: University of Pennsylvania
+    url: https://arxiv.org/abs/2310.08419
+    accessed: 2026-10-08
 ---
 
 # Red Teaming
@@ -57,7 +81,7 @@ Ordinary QA and the eval suites built in Module 5 validate behavior against expe
 
 **Direct and indirect prompt injection** ([sec-01](sec-01-prompt-injection.md)) — the most systematically studied category, and the natural starting point for any red-teaming program given how well-developed its payload taxonomy already is.
 
-**Jailbreaking** — getting a model to violate its intended behavioral constraints through role-play framing, hypothetical scenarios, gradual escalation across turns, encoding tricks (base64, unusual formatting, foreign-language framing), or many-shot examples that shift the model's apparent context of what's acceptable.[^perez-redteam] Distinct from injection in that jailbreaking doesn't necessarily involve untrusted external content — it's the user themselves probing the model's own trained constraints directly.
+**Jailbreaking** — getting a model to violate its intended behavioral constraints through role-play framing, hypothetical scenarios, encoding tricks (base64, unusual formatting, foreign-language framing) that exploit gaps in safety training,[^wei-jailbroken] gradual escalation across turns that never asks for the harmful thing outright,[^russinovich-crescendo] or many-shot examples that shift the model's apparent context of what's acceptable.[^anil-manyshot] Distinct from injection in that jailbreaking doesn't necessarily involve untrusted external content — it's the user themselves probing the model's own trained constraints directly.
 
 **Data extraction attempts** — probing for system-prompt leakage, training-data memorization, or exposure of other users' data through a multi-tenant system's retrieval or context boundaries (connecting directly to [sec-03](sec-03-privacy-compliance.md)'s access-control failures) — testing whether the system reveals something it was designed to keep private.
 
@@ -71,7 +95,7 @@ Ordinary QA and the eval suites built in Module 5 validate behavior against expe
 
 **Human red teamers** bring creativity, contextual judgment, and the ability to chain multiple weak signals into a genuinely novel attack — the category of finding automated approaches most reliably miss, because it requires exactly the kind of lateral, context-aware reasoning current automated tooling doesn't replicate well. They're also expensive and slow relative to their coverage, which makes human red-teaming time a scarce resource best spent on genuinely novel scenarios and complex, multi-step attack chains rather than on the kind of testing that scales trivially.
 
-**Automated red teaming** — using another LLM to generate adversarial prompts at scale, sometimes optimized via search or gradient-based methods against the target system's actual responses[^perez-redteam] — trades some of human red-teaming's creativity for massive scale and repeatability, making it well suited to breadth (systematically exploring known attack pattern variations, running at every CI cycle) rather than depth (discovering an attack category nobody has thought of yet).
+**Automated red teaming** — using another LLM to generate adversarial prompts at scale — sampled zero- or few-shot, or trained with reinforcement learning to find prompts that elicit failures,[^perez-redteam] or refined iteratively against the target's actual responses, as black-box attacks such as PAIR do in a handful of queries[^chao-pair] — trades some of human red-teaming's creativity for massive scale and repeatability, making it well suited to breadth (systematically exploring known attack pattern variations, running at every CI cycle) rather than depth (discovering an attack category nobody has thought of yet).
 
 **The two are complementary, not substitutable, and combine in a specific division of labor**: human red-teaming sessions run periodically to discover genuinely novel attack categories and complex chains; every finding from those sessions gets converted into an automated, parameterized test template; that template runs continuously via the automated pipeline, covering variations at a scale no human session could sustain. Automated red teaming without periodic human sessions plateaus at whatever attack patterns were already known when the automation was built; human red teaming without automated conversion rediscovers (or fails to rediscover) the same findings repeatedly instead of accumulating protection.
 
@@ -94,7 +118,7 @@ Concretely: a successful attack payload becomes a test case with an expected (sa
 
 ## Continuous practice, not a launch gate
 
-Red teaming done once before launch answers "was this safe at launch," a question with a shrinking half-life the moment the system, the underlying model, or the threat landscape changes — any of which invalidates a point-in-time assessment. **Mature practice runs red teaming on a cadence** (a scheduled session, not just triggered by major changes), **after every significant model or prompt version bump** (treating it the same way [prd-06](../06-production/prd-06-deployment-infrastructure.md) treats a version bump as a reviewed deployment event, with red-teaming as part of that review), and **continuously via the automated pipeline** feeding the regression suite on every CI run. This is the same "monitoring, not a one-time check" posture [prd-04](../06-production/prd-04-reliability.md) established for reliability generally, applied here to the adversarial-robustness dimension specifically.
+Red teaming done once before launch answers "was this safe at launch," a question with a shrinking half-life the moment the system, the underlying model, or the threat landscape changes — any of which invalidates a point-in-time assessment. **Mature practice runs red teaming on a cadence** (a scheduled session, not just triggered by major changes), **after every significant model or prompt version bump** (treating it the way [prd-06](../06-production/prd-06-deployment-infrastructure.md) treats a version bump — as a reviewed deployment event — with [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)'s red-team subset run as part of that review), and **continuously via the automated pipeline** feeding the regression suite on every CI run. This is the same "monitoring, not a one-time check" posture [prd-04](../06-production/prd-04-reliability.md) established for reliability generally, applied here to the adversarial-robustness dimension specifically.
 
 ## Production engineering perspective
 
@@ -102,13 +126,13 @@ Red teaming done once before launch answers "was this safe at launch," a questio
 - **Run human red-teaming sessions periodically**, reserved for novel-attack discovery and complex multi-step chains — the category automated tooling doesn't reliably find.
 - **Convert every real finding into a permanent regression test**, feeding the same CI gate that catches quality regressions ([evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)) — a finding that isn't converted is a finding that will need rediscovering.
 - **Run automated red teaming continuously**, generating variations of known attack patterns at CI scale.
-- **Trigger a red-teaming pass on every significant version bump**, per [prd-06](../06-production/prd-06-deployment-infrastructure.md)'s deployment-review discipline, not just at initial launch.
+- **Trigger a red-teaming pass on every significant version bump**, as part of [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)'s deep tier for model adoption and [prd-06](../06-production/prd-06-deployment-infrastructure.md)'s reviewed-deployment discipline, not just at initial launch.
 - **Scope severity and disclosure practice to context** — an internal tool and a public-facing product carry different obligations for how findings are handled and communicated, and a responsible-disclosure process matters if external researchers report findings.
 - **Report red-teaming coverage and results with real numbers** (attack categories tested, catch rate, findings converted to regression tests) — the same measured-effectiveness discipline [sec-02](sec-02-guardrails.md) applied to guardrails generally.
 
 ## Historical evolution
 
-**2022:** Anthropic's early red-teaming research formalizes systematic, taxonomy-driven adversarial testing of language models as a distinct research and engineering discipline, moving beyond ad hoc "try to break it" sessions toward a structured methodology with documented findings.[^anthropic-redteam] **2022–2023:** automated red-teaming research demonstrates that one language model can generate adversarial prompts against another at meaningful scale, establishing the automated half of the human/automated division this chapter describes.[^perez-redteam] **2023:** as production LLM applications proliferate, red-teaming practice extends from "test the base model's safety behavior" to "test the full application" — including retrieval pipelines, tool access, and multi-turn conversation state, tracking directly with the expansion of what production systems actually do. **2023–2024:** major providers formalize external and network-based red-teaming programs, recognizing that internal red-teaming alone under-samples the diversity of adversarial creativity available from a broader pool of testers.[^openai-redteam] **2024–present:** the discipline converges on continuous practice — periodic human sessions feeding an automated regression pipeline gated into CI — as the field internalizes that a point-in-time safety assessment has a short half-life against systems, models, and threat landscapes that all keep changing.
+**2022:** Anthropic publishes one of the first large-scale studies of red-teaming language models — its methods, how attack success scales with model size and training, and a released dataset of attacks — moving the practice beyond ad hoc "try to break it" sessions toward documented, repeatable methodology.[^anthropic-redteam] **2022–2023:** automated red-teaming research demonstrates that one language model can generate adversarial prompts against another at meaningful scale, establishing the automated half of the human/automated division this chapter describes.[^perez-redteam] **2023:** as production LLM applications proliferate, red-teaming practice extends from "test the base model's safety behavior" to "test the full application" — including retrieval pipelines, tool access, and multi-turn conversation state, tracking directly with the expansion of what production systems actually do. **2023–2024:** major providers formalize external and network-based red-teaming programs (OpenAI's Red Teaming Network launches in 2023), recognizing that internal red-teaming alone under-samples the diversity of adversarial creativity available from a broader pool of testers.[^openai-redteam] **2024–present:** the discipline converges on continuous practice — periodic human sessions feeding an automated regression pipeline gated into CI — as the field internalizes that a point-in-time safety assessment has a short half-life against systems, models, and threat landscapes that all keep changing.
 
 ## Common misconceptions
 
@@ -143,7 +167,7 @@ Red teaming done once before launch answers "was this safe at launch," a questio
 
 **The automated-only program that plateaued.** A team builds an automated red-teaming pipeline early and relies on it exclusively for a year, watching its catch rate on known attack categories stay stable and near-perfect — reasonably concluding, incorrectly, that their safety posture was solid. An external researcher reports a genuinely novel attack chain the automated system had no template for and was never going to generate, since it was only ever varying patterns it already knew. The fix is process, not code: a quarterly human red-teaming session dedicated specifically to novel-attack discovery, seeding the automated pipeline with new templates on an ongoing basis rather than only once at the start.
 
-**The version bump that needed re-testing.** A routine model version bump — handled correctly per [prd-06](../06-production/prd-06-deployment-infrastructure.md)'s canary discipline for quality — passes the standard eval gate cleanly, but a red-teaming pass triggered as part of the same deployment review finds that several previously-blocked jailbreak patterns now succeed against the new model version, which has subtly different behavior under adversarial framing than its predecessor. The version bump is held pending a guardrail adjustment, avoiding a safety regression that a quality-only eval gate would never have caught, because quality and adversarial robustness are different axes measured by different tests.
+**The version bump that needed re-testing.** A routine model version bump — handled correctly per [prd-06](../06-production/prd-06-deployment-infrastructure.md)'s canary discipline for quality — passes the standard eval gate cleanly, but the red-team subset run as part of the same deployment review ([evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)'s deep tier) finds that several previously-blocked jailbreak patterns now succeed against the new model version, which has subtly different behavior under adversarial framing than its predecessor. The version bump is held pending a guardrail adjustment, avoiding a safety regression that a quality-only eval gate would never have caught, because quality and adversarial robustness are different axes measured by different tests.
 
 ## Interview questions
 
@@ -169,7 +193,7 @@ Red teaming done once before launch answers "was this safe at launch," a questio
 
 **Mini-project: build a red-teaming pipeline for your capstone.** On your capstone: (a) build an attack taxonomy scoped to your system's actual tool access and data handling, prioritizing the two or three most relevant categories; (b) run a focused human red-teaming pass against those categories, documenting every payload tried and its outcome; (c) for every finding that reveals a real gap, convert it into a labeled test case with expected safe behavior; (d) add those test cases to your eval suite from evl-02/evl-06 so they run in your CI gate; (e) if time allows, use an LLM to generate a handful of automated variations of your strongest finding and test whether they also succeed, to see the automated-scale half of the practice firsthand. Target: 4 hours. Success criterion: at least one real finding, converted into a regression test now gated into your CI pipeline, that would catch a reintroduction of the same gap.
 
-**Capstone extension:** this chapter operationalizes [sec-01](sec-01-prompt-injection.md)'s and [sec-02](sec-02-guardrails.md)'s ad hoc testing into a standing practice; findings feed [evl-02](../05-evaluation/evl-02-eval-datasets.md)'s dataset accumulation and [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)'s CI gate; deployment-triggered red-teaming connects to [prd-06](../06-production/prd-06-deployment-infrastructure.md)'s version-bump review.
+**Capstone extension:** this chapter operationalizes [sec-01](sec-01-prompt-injection.md)'s and [sec-02](sec-02-guardrails.md)'s ad hoc testing into a standing practice; findings feed [evl-02](../05-evaluation/evl-02-eval-datasets.md)'s dataset accumulation and [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)'s CI gate; deployment-triggered red-teaming runs in [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)'s deep tier inside [prd-06](../06-production/prd-06-deployment-infrastructure.md)'s version-bump review.
 
 ## Revision summary
 
@@ -190,6 +214,8 @@ Red teaming done once before launch answers "was this safe at launch," a questio
 | Why must a finding become a regression test? | Without conversion, the same vulnerability can silently reappear on a future change with no automatic detection. |
 | Why isn't pre-launch red teaming sufficient? | Point-in-time assessment; half-life shrinks as model, prompt, and threat landscape change. |
 | When should a dedicated red-teaming pass be triggered? | On every significant model or prompt version bump, as part of the deployment review — not just at launch. |
+| How does jailbreaking differ from prompt injection? | Jailbreaking doesn't necessarily involve untrusted external content; the user directly probes the model's own trained constraints, e.g., via role-play, encoding tricks or many-shot examples. |
+| How should a red-teaming attack taxonomy be prioritized? | Against the system's actual tool access and data sensitivity; not every category matters equally, and a generic checklist applied uniformly wastes effort. |
 
 ## Further reading
 
@@ -207,6 +233,10 @@ Red teaming done once before launch answers "was this safe at launch," a questio
 
 ## Sources
 
-[^anthropic-redteam]: [T1] Ganguli et al. (2022). "Red Teaming Language Models to Reduce Harms: Methods, Scaling Behaviors, and Lessons Learned." arXiv:2209.07858. https://arxiv.org/abs/2209.07858 (accessed 2026-07-17)
+[^anthropic-redteam]: [T2] Ganguli et al. (2022). "Red Teaming Language Models to Reduce Harms: Methods, Scaling Behaviors, and Lessons Learned." arXiv:2209.07858. https://arxiv.org/abs/2209.07858 (accessed 2026-07-17)
 [^perez-redteam]: [T2] Perez et al. (2022). "Red Teaming Language Models with Language Models." arXiv:2202.03286. https://arxiv.org/abs/2202.03286 (accessed 2026-07-17)
-[^openai-redteam]: [T1] OpenAI. "OpenAI's approach to external red teaming." https://openai.com/index/red-teaming-network/ (accessed 2026-07-17)
+[^openai-redteam]: [T1] OpenAI (2023). "OpenAI Red Teaming Network." https://openai.com/index/red-teaming-network/ (accessed 2026-07-17)
+[^wei-jailbroken]: [T2] Wei, Haghtalab & Steinhardt (2023). "Jailbroken: How Does LLM Safety Training Fail?" NeurIPS 2023. arXiv:2307.02483. https://arxiv.org/abs/2307.02483 (accessed 2026-10-08)
+[^anil-manyshot]: [T2] Anil et al. (2024). "Many-shot Jailbreaking." Anthropic. https://www.anthropic.com/research/many-shot-jailbreaking (accessed 2026-10-08)
+[^russinovich-crescendo]: [T2] Russinovich, Salem & Eldan (2024). "Great, Now Write an Article About That: The Crescendo Multi-Turn LLM Jailbreak Attack." Microsoft; USENIX Security 2025. arXiv:2404.01833. https://arxiv.org/abs/2404.01833 (accessed 2026-10-08)
+[^chao-pair]: [T2] Chao et al. (2023). "Jailbreaking Black Box Large Language Models in Twenty Queries." arXiv:2310.08419. https://arxiv.org/abs/2310.08419 (accessed 2026-10-08)

@@ -2,6 +2,79 @@
 
 Repo-level change history. CalVer tags per CONVENTIONS §6.
 
+## 2026-10-08 — content accuracy and depth pass (Modules 6–9)
+
+An accuracy audit of the 17 most recent chapters (prd-05/06, sec-01…05, ftn-01…06, fro-01/02/03/05) plus prd-03. Every finding was checked against the chapter text and the cited sources before anything changed, and every new source was verified to exist before being cited.
+
+- **Factual corrections:**
+  - **prd-03 (speculative decoding):**
+    - Accepting all k drafted tokens yields k+1 tokens, not k; the rejection case is off by one no longer.
+    - LLM.int8's outliers are activation features, not weights.
+    - The worked example gives 2.8 tokens, not 2.7.
+    - The draft must share the target's tokenizer.
+    - Output is identical *in distribution*.
+  - **ftn-05 (RLHF and DPO):**
+    - PPO-based RLHF holds up to four models (adding the value model); fnd-07 corrected to match.
+    - DPO still needs a frozen reference, so it is not "single-model".
+    - "Comparable results" is qualified with a controlled DPO-vs-PPO study.
+    - Online RL and verifiable rewards are kept in view.
+  - **ftn-02 (LoRA and QLoRA):**
+    - LoRA on all linear layers is what matched full fine-tuning in the QLoRA paper.
+    - QLoRA's three contributions are named correctly.
+    - Frozen weights still pass gradients through.
+    - Adapters are two to three orders of magnitude smaller than the model, not one.
+  - **fro-03:** Gemini Nano and Apple's on-device model are distilled and quantized (per their own reports), not an alternative to compression.
+  - **fro-02:**
+    - Fixed the latent-diffusion arXiv ID.
+    - C2PA provenance survives editing only via C2PA-aware re-signing, not by copying the metadata.
+    - Parallel image candidates buy time and choice, not cheaper generation.
+  - **fro-01:** Moshi still predicts text tokens internally, so "native" means no cascade, not no text.
+  - **sec-01:** A "read-only" GET tool can exfiltrate through its query string. The example now teaches egress allowlists, in line with eng-09.
+  - **prd-05:**
+    - Input tokens are not free.
+    - The retry-cost example now adds up.
+    - Caching carries its write-premium and TTL caveat.
+    - Batch APIs and caching are dated 2024.
+  - **sec-05:** RLHF starts from the SFT model under a KL penalty. Model selection compares post-training behavior rather than an unmeasurable "alignment tax".
+  - **ftn-01:** Failing a long few-shot prompt is no longer presented as a reason to fine-tune.
+  - **Other corrected claims:**
+    - The moderation API is dated 2022.
+    - The NeMo rail types are listed correctly.
+    - The red-teaming source titles are fixed.
+    - Distillation's origin goes back to 2006.
+    - The history of hosted fine-tuning is corrected.
+- **Misattributed cross-references fixed:** prd-01 has no build-vs-buy framework and no quality–latency–cost triangle.
+  - The self-hosting references now point to api-06 and api-07.
+  - The triangle is now introduced in prd-05.
+  - Red-team gating now points to evl-06.
+  - The behavior-shaping framing is now credited to ftn-01.
+  - Smaller mismatches in prd-02, prd-04, fro-05 and sec-03 are fixed too.
+- **Content the curriculum already promised, now written:**
+  - **prd-06:** a compute layer covering GPU memory classes with spec-sheet numbers, procurement break-even arithmetic, cold starts and autoscaling, Kubernetes versus managed services, and capacity planning. Its title, roadmap entry and five inbound links had promised it.
+  - **sec-03:** the EU AI Act, with dates as amended in 2026, and the EDPB's view on personal data inside trained models.
+  - **ftn-04:** chat templates and loss masking (fnd-07 pointed here).
+  - **ftn-03 and ftn-04:** safety data in the training mix and post-tune safety evals.
+  - **ftn-01:** continued pretraining, and the privacy cost of training on personal data.
+  - **ftn-05:** running DPO in practice with TRL.
+  - **ftn-02:** adapter merging and the 7B memory arithmetic.
+- **Sources:**
+  - 41 sources added, each verified before it was cited.
+  - Wrong or unverifiable sources were replaced:
+    - a vision-docs page cited for voice;
+    - an unofficial GDPR mirror;
+    - pre-LLM course notes;
+    - an Anthropic fine-tuning docs URL that could not be confirmed, now the actual announcement;
+    - the SRE book's release-engineering chapter, now the Workbook's canarying chapter;
+    - the eng-12 self-pointer.
+  - A red-teaming source's title was corrected to match its URL.
+  - All 17 chapters now have at least 4 sources.
+  - Tiers are normalized: papers are T2, official docs and law are T1.
+- **Flashcards:** every one of the 17 chapters now has 9 or more (prd-06 has 11). Each new card was checked against its chapter, and existing card positions are unchanged so review history stays attached.
+- **Validator:** now fails when a frontmatter source has no footnote definition, or a footnote's `[T#]` tag disagrees with its frontmatter tier.
+- **Labs:** the LoRA lab implements the α/r scale the chapter's diagram now shows, with a new test (89 tests in total).
+- **Diagrams:** inline, the viewer leaves a band under each drawing for the zoom tools, so they never cover a node.
+- **Glossary convention:** CONVENTIONS §5 now matches the app, which links glossary terms automatically (REVIEW P1-1).
+
 ## 2026-10-08 — mastery: a skill map from your own evidence
 
 - **Mastery model** (`app/lib/mastery.js`). Per chapter, two numbers: *mastery* — how well you did on what you demonstrated (self-test and interview grades, estimated flashcard recall, lab results) — and *evidence* — how much you have done relative to what the chapter offers, reading included. Reading counts as exposure and never raises mastery; a chapter that is only read is reported as "Read, not yet tested". Self-grades fade with a 45-day half-life, so old answers prompt a retest rather than inflating the score. Flashcard recall uses an FSRS-style forgetting curve with the card's interval as stability (90% when a card falls due). Below 15% evidence a chapter is "Too early to tell". Chapters with several labs (fnd-08) count each.

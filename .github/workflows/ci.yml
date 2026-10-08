@@ -23,6 +23,9 @@ jobs:
       - name: Run metadata + link validator
         run: python3 scripts/validate.py
 
+      - name: Check prerequisite graph agrees with manifest and chapters
+        run: python3 scripts/check-dependency-graph.py
+
   check-content-index:
     name: Check app/data/content.json is up to date
     runs-on: ubuntu-latest

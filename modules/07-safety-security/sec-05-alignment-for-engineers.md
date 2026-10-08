@@ -6,8 +6,8 @@ prerequisites: [fnd-07]
 related_ids: [fnd-07, sec-01, sec-02, sec-04]
 keywords:
   - alignment
-  - RLHF
-  - Constitutional AI
+  - rlhf
+  - constitutional ai
   - specification gaming
   - reward hacking
   - value specification
@@ -23,27 +23,39 @@ summary: >-
 difficulty: 3
 est_minutes: 150
 status: stable
-volatility: low
+volatility: evergreen
 last_reviewed: 2026-07-18
 sources:
   - key: ouyang-instructgpt
-    tier: 1
+    tier: 2
     title: "Training language models to follow instructions with human feedback"
     org: arXiv
     url: https://arxiv.org/abs/2203.02155
     accessed: 2026-07-18
   - key: bai-cai
-    tier: 1
+    tier: 2
     title: "Constitutional AI: Harmlessness from AI Feedback"
     org: arXiv
     url: https://arxiv.org/abs/2212.08073
     accessed: 2026-07-18
   - key: krakovna-specgaming
-    tier: 2
+    tier: 4
     title: "Specification gaming: the flip side of AI ingenuity"
     org: DeepMind
     url: https://deepmind.google/discover/blog/specification-gaming-the-flip-side-of-ai-ingenuity/
     accessed: 2026-07-18
+  - key: sharma-sycophancy
+    tier: 2
+    title: "Towards Understanding Sycophancy in Language Models"
+    org: Anthropic
+    url: https://arxiv.org/abs/2310.13548
+    accessed: 2026-10-08
+  - key: bowman-oversight
+    tier: 2
+    title: "Measuring Progress on Scalable Oversight for Large Language Models"
+    org: Anthropic
+    url: https://arxiv.org/abs/2211.03540
+    accessed: 2026-10-08
 ---
 
 # Alignment for Engineers
@@ -56,7 +68,7 @@ This is the oldest problem in optimization, not a new one invented by language m
 
 ## RLHF and Constitutional AI, at engineering resolution
 
-**RLHF (Reinforcement Learning from Human Feedback)** operationalizes "be helpful and harmless" concretely: human raters compare pairs of model outputs and indicate which is better, that preference data trains a reward model to predict human preference judgments, and the base model is then optimized (via reinforcement learning) to produce outputs the reward model scores highly.[^ouyang-instructgpt] The engineering-relevant subtlety: **the reward model is a proxy for human judgment, not human judgment itself**, trained on a necessarily finite and imperfect sample of comparisons — and optimizing hard against an imperfect proxy is exactly the setup that produces the specification-gaming failures below, because the base model is optimizing against the reward model's actual signal, which only approximates what raters would say on the full space of possible outputs.
+**RLHF (Reinforcement Learning from Human Feedback)** operationalizes "be helpful and harmless" concretely: human raters compare pairs of model outputs and indicate which is better, that preference data trains a reward model to predict human preference judgments, and the supervised fine-tuned model is then optimized with reinforcement learning (PPO) to produce outputs the reward model scores highly, while a KL penalty keeps it close to that starting point so it can't drift into whatever the reward model happens to over-score ([fnd-07](../01-foundations/fnd-07-post-training.md)).[^ouyang-instructgpt] The engineering-relevant subtlety: **the reward model is a proxy for human judgment, not human judgment itself**, trained on a necessarily finite and imperfect sample of comparisons — and optimizing hard against an imperfect proxy is exactly the setup that produces the specification-gaming failures below, because the policy is optimizing against the reward model's actual signal, which only approximates what raters would say on the full space of possible outputs.
 
 **Constitutional AI (CAI)** attempts to reduce the sheer volume of human-labeled data alignment requires by having the model critique and revise its own outputs against a written set of principles (a "constitution"), then training on the self-critiqued data — using AI feedback, guided by explicit written principles, to supplement or partially replace human feedback at scale.[^bai-cai] The engineering-relevant point: this shifts some of the specification problem from "millions of implicit human judgments" to "a smaller number of explicit written principles," which is more scalable and more auditable — you can actually read a constitution — but inherits the same fundamental issue: the constitution itself is a specification, and specifications are imperfect by nature, so CAI narrows the specification gap without eliminating it as a category of problem.
 
@@ -66,28 +78,28 @@ This is the oldest problem in optimization, not a new one invented by language m
 
 This is the practical payoff of the chapter for someone who will never touch RLHF training code but will absolutely encounter its effects: **specification gaming** is when a trained model satisfies the literal training objective in a way that diverges from the intended behavior — not because the model is "trying to be sneaky," but because gradient-based optimization has no preference for the intended solution over any other solution that scores equally well on the actual, imperfect training signal.[^krakovna-specgaming]
 
-Concrete forms an application engineer will recognize from working with real models: **sycophancy** — a model trained to be rated highly by human raters can learn that agreeing with the user, regardless of correctness, is a reliable way to score well, since raters (like anyone) tend to rate agreement favorably more often than disagreement, even when the disagreement is correct. **Verbosity as a false signal of quality** — if raters historically preferred longer, more detailed-looking answers on average, a model can learn to pad output length as a shortcut to a higher reward-model score, independent of whether the padding adds information. **Refusal miscalibration** — a model trained hard against generating harmful content can overshoot into refusing benign requests that are merely adjacent in surface features to disallowed ones, because the training signal rewarded refusal broadly rather than the narrower, harder-to-specify "refuse exactly the genuinely harmful subset." **Confident hallucination on out-of-distribution questions** — connecting directly to [fnd-09](../01-foundations/fnd-09-known-limitations.md)'s shallows framing: a training process that never strongly penalized confident wrongness over hedged uncertainty produces a model with no learned incentive to express calibrated uncertainty, so it doesn't.
+Concrete forms an application engineer will recognize from working with real models: **sycophancy** — a model trained to be rated highly by human raters can learn that agreeing with the user, regardless of correctness, is a reliable way to score well, since raters (like anyone) tend to rate agreement favorably more often than disagreement, even when the disagreement is correct. This is measured, not hypothetical: five production assistants showed it consistently across varied tasks, and in existing preference data both human raters and preference models sometimes preferred a convincingly written sycophantic answer over a correct one.[^sharma-sycophancy] **Verbosity as a false signal of quality** — if raters historically preferred longer, more detailed-looking answers on average, a model can learn to pad output length as a shortcut to a higher reward-model score, independent of whether the padding adds information. **Refusal miscalibration** — a model trained hard against generating harmful content can overshoot into refusing benign requests that are merely adjacent in surface features to disallowed ones, because the training signal rewarded refusal broadly rather than the narrower, harder-to-specify "refuse exactly the genuinely harmful subset." **Confident hallucination on out-of-distribution questions** — connecting directly to [fnd-09](../01-foundations/fnd-09-capabilities-and-limits.md)'s shallows framing: a training process that never strongly penalized confident wrongness over hedged uncertainty produces a model with no learned incentive to express calibrated uncertainty, so it doesn't.
 
 **None of these are things application-layer prompting can fully fix** — they're artifacts of the training-time specification gap, and a system prompt asking the model to "not be sycophantic" runs into the model's trained tendency the same way asking it to "always be right" doesn't cure hallucination. What application engineers *can* do is build around these known tendencies: guardrails and evals ([sec-02](sec-02-guardrails.md), [evl-03](../05-evaluation/evl-03-llm-as-judge.md)) that specifically check for sycophantic agreement on factually testable claims, length-normalized quality scoring rather than trusting a rater-style preference signal that conflates length with quality, and calibration checks that specifically probe out-of-distribution confidence rather than assuming the training process handled it.
 
 ## Scalable oversight and the alignment tax
 
-**Scalable oversight** is the open research question behind both RLHF and CAI: as models become more capable than the humans evaluating them on any given task, how do you supervise behavior you can no longer straightforwardly judge yourself? This is squarely a research-frontier problem rather than an application-engineering one, but it's worth naming because it's the reason alignment techniques keep evolving rather than having been "solved" once — the target keeps moving as capability grows.
+**Scalable oversight** is the open research question behind both RLHF and CAI: as models become more capable than the humans evaluating them on any given task, how do you supervise behavior you can no longer straightforwardly judge yourself? This is squarely a research-frontier problem rather than an application-engineering one, but it's worth naming because it's the reason alignment techniques keep evolving rather than having been "solved" once — the target keeps moving as capability grows. It is at least studiable now: in one early experiment, people working with an unreliable chat assistant on hard questions outperformed both the model alone and their own unaided answers.[^bowman-oversight]
 
-**The alignment tax** is the practical, measurable cost: aligned models sometimes perform worse on narrow capability benchmarks than their less-aligned base counterparts, because alignment training optimizes for a different objective (helpful, harmless, honest, as raters or a constitution defines it) than raw next-token prediction accuracy on a benchmark distribution. This is relevant to [api-06](../02-llm-apis/api-06-model-selection.md)'s model-selection process: a model choice isn't just about raw capability, it's about where a given model sits on the alignment-tax trade-off for your specific task, and that position is a real, measurable engineering input, not just an abstract concern.
+**The alignment tax** is the practical, measurable cost: aligned models sometimes perform worse on narrow capability benchmarks than their less-aligned base counterparts, because alignment training optimizes for a different objective (helpful, harmless, honest, as raters or a constitution defines it) than raw next-token prediction accuracy on a benchmark distribution. Strictly, the tax compares a model with its own less-aligned base, which an API customer rarely sees. What you *can* compare when selecting among already post-trained models ([api-06](../02-llm-apis/api-06-model-selection.md)) are the behaviors those different post-training choices produce — refusal rate, calibration and hedging, verbosity, sycophancy — and those are real, measurable engineering inputs on your own task, not abstract concerns.
 
 ## What application-layer engineers actually control
 
-This is the chapter's most practical takeaway: alignment happens upstream, at training time, largely outside any application engineer's control — but the *system* built on top of an aligned model has real levers, and the discipline is knowing which lever addresses which problem. **Prompting** shapes behavior within the model's trained distribution but cannot override training-time tendencies like sycophancy or miscalibrated refusal. **Guardrails** ([sec-02](sec-02-guardrails.md)) catch specific known failure patterns after the fact, as an external check rather than a fix to the underlying tendency. **Evaluation** ([evl-01](../05-evaluation/evl-01-eval-fundamentals.md) through [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)) measures whether a specific deployment exhibits these known alignment-adjacent failure modes on your actual task distribution, which is the only way to know whether they matter for your specific use case rather than assuming they do or don't. **Model selection** ([api-06](../02-llm-apis/api-06-model-selection.md)) chooses among models with different alignment-tax trade-offs and different training-time choices, which is a real degree of freedom even though the training itself isn't. What application engineers cannot do is retrain the model's underlying tendencies — that's the honest boundary this chapter draws, and pretending otherwise (believing a clever enough system prompt fixes a training-time specification gap) is itself a common and costly misconception.
+This is the chapter's most practical takeaway: alignment happens upstream, at training time, largely outside any application engineer's control — but the *system* built on top of an aligned model has real levers, and the discipline is knowing which lever addresses which problem. **Prompting** shapes behavior within the model's trained distribution and can reduce tendencies like sycophancy or miscalibrated refusal, but cannot reliably override them. **Guardrails** ([sec-02](sec-02-guardrails.md)) catch specific known failure patterns after the fact, as an external check rather than a fix to the underlying tendency. **Evaluation** ([evl-01](../05-evaluation/evl-01-evaluation-fundamentals.md) through [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)) measures whether a specific deployment exhibits these known alignment-adjacent failure modes on your actual task distribution, which is the only way to know whether they matter for your specific use case rather than assuming they do or don't. **Model selection** ([api-06](../02-llm-apis/api-06-model-selection.md)) chooses among models whose different post-training choices produce different behavior profiles — refusal, calibration, verbosity, sycophancy — which is a real degree of freedom even though the training itself isn't. What application engineers cannot do is retrain the model's underlying tendencies — that's the honest boundary this chapter draws, and pretending otherwise (believing a clever enough system prompt fixes a training-time specification gap) is itself a common and costly misconception.
 
 ## Production engineering perspective
 
 - **Treat sycophancy, verbosity bias, refusal miscalibration, and confident hallucination as known, expected tendencies**, not surprising bugs — design evals and guardrails around them from the start rather than discovering each individually in production.
 - **Evaluate for these specifically**, not just for general task quality — a factual-agreement check against known-false user claims (does the model correct the user or agree), a length-normalized quality metric, a calibration probe on out-of-distribution questions.
 - **Don't expect prompting to fix a training-time tendency** — a system prompt can shape behavior within distribution but has real limits against a trained bias, and testing this expectation empirically beats assuming it either way.
-- **Weigh alignment tax as a real input to model selection** ([api-06](../02-llm-apis/api-06-model-selection.md)), alongside cost, latency, and raw capability.
+- **Weigh post-training behavior as a real input to model selection** ([api-06](../02-llm-apis/api-06-model-selection.md)) — refusal rate, calibration, verbosity and sycophancy measured on your task — alongside cost, latency, and raw capability.
 - **Build guardrails specifically targeting known alignment failure modes** — sycophancy checks, verbosity-independent quality scoring — as a distinct category from the general guardrail taxonomy in [sec-02](sec-02-guardrails.md).
-- **Stay current on alignment technique evolution** — RLHF and CAI are not the end state; scalable oversight research continues to reshape how models are trained, and model-selection and eval practices should track it.
+- **Stay current on alignment technique evolution** — RLHF and CAI are not the end state: direct preference optimization and reinforcement learning against verifiable rewards ([fnd-07](../01-foundations/fnd-07-post-training.md), [ftn-05](../08-fine-tuning/ftn-05-preference-optimization.md)) already changed how models are post-trained, and scalable oversight research continues to reshape it, and model-selection and eval practices should track it.
 
 ## Historical evolution
 
@@ -99,21 +111,21 @@ This is the chapter's most practical takeaway: alignment happens upstream, at tr
 - **"A better system prompt fixes sycophancy or hallucination."** These are training-time tendencies; prompting shapes behavior within the trained distribution but has real, empirically testable limits against overriding it.
 - **"RLHF and Constitutional AI are unrelated techniques."** CAI largely addresses RLHF's human-labeling bottleneck using AI feedback guided by written principles — they're complementary approaches to the same underlying specification problem, often used together in practice.
 - **"Specification gaming means the model is being deceptive."** It's an artifact of optimizing against an imperfect proxy signal, not intentional behavior — the same category of failure as any optimizer exploiting a loophole in an imperfectly specified objective.
-- **"Alignment is a solved problem now that RLHF exists."** Scalable oversight remains an open research question, and the alignment tax is a real, ongoing, measurable trade-off, not a historical footnote.
+- **"Alignment is a solved problem now that RLHF exists."** Scalable oversight remains an open research question, and post-training still trades some behaviors against others — a real, ongoing, measurable trade-off, not a historical footnote.
 
 ## Failure modes and trade-offs
 
 - **Assuming prompting fixes trained tendencies** — a costly misconception leading to under-designed guardrails and evals for known failure modes. *Fix:* treat sycophancy, verbosity bias, and calibration issues as expected, and build specific checks for them.
 - **Rater-preference proxies that reward the wrong signal** — verbosity or agreeableness scored as quality during RLHF data collection produces a model optimized for the proxy, not the intent. *Fix (application-layer)*: length-normalized and factual-agreement-aware evaluation, since the training-time cause isn't directly fixable downstream.
-- **Ignoring alignment tax in model selection** — choosing a model purely on raw benchmark capability without weighing its alignment-tax trade-off for your specific task. *Fix:* evaluate the specific deployment on your task distribution, not just published capability benchmarks.
+- **Ignoring post-training behavior in model selection** — choosing a model purely on raw benchmark capability without measuring how it refuses, hedges, or flatters on your specific task. *Fix:* evaluate the specific deployment on your task distribution, not just published capability benchmarks.
 - **Treating a constitution or reward model as a complete value specification** — both are still imperfect proxies for actual intent, at a smaller and more auditable scale, but not a solved specification problem. *Fix:* maintain the same specification-gap awareness regardless of which technique produced the model.
-- **The central trade-off:** the alignment tax itself — optimizing for helpful/harmless/honest as operationalized can cost some raw capability, and the resolution isn't picking one extreme, it's evaluating where a specific model sits on that trade-off for your specific task.
+- **The central trade-off:** the alignment tax itself — optimizing for helpful/harmless/honest as operationalized can cost some raw capability, and different post-training choices land models at different points (more cautious and better calibrated, or bolder and more fluent). The resolution isn't picking one extreme; it's measuring where each candidate lands on your specific task.
 
 ## Best practices
 
 - Build evals that specifically probe sycophancy (factual-agreement checks against known-false claims), verbosity-independent quality, refusal calibration, and out-of-distribution confidence — treat these as a standing eval category, not an afterthought.
 - Don't rely on prompting alone to counter a trained tendency; test the assumption empirically rather than assuming either that it works or that it's futile.
-- Factor alignment tax into model selection deliberately, alongside cost, latency, and capability.
+- Factor post-training behavior (refusal, calibration, verbosity, sycophancy) into model selection deliberately, alongside cost, latency, and capability.
 - Build guardrails specifically targeting known alignment-adjacent failure modes as a distinct category within the broader guardrail taxonomy.
 - Stay current on alignment technique evolution, since model behavior characteristics shift as training methods evolve.
 - Draw the honest boundary for stakeholders: application engineering can measure, guard against, and select around alignment failure modes, but cannot retrain them away.
@@ -124,7 +136,7 @@ This is the chapter's most practical takeaway: alignment happens upstream, at tr
 
 **The verbosity bias that inflated a wrong metric.** A team using an LLM-judge to score response quality notices their scores correlate suspiciously well with response length. Investigating, they find their judge prompt implicitly rewards more detailed-looking answers — the same rater-preference proxy issue RLHF training itself is vulnerable to, now reproduced one layer up in their own evaluation pipeline. Switching to a length-normalized rubric that explicitly penalizes padding without added information corrects the metric and reveals that their shortest model variant was actually their highest-quality one by the corrected measure.
 
-**The model-selection decision that weighed alignment tax explicitly.** Choosing between two model options for a coding-assistant feature, a team finds one scores marginally higher on raw code-generation benchmarks but noticeably more prone to confident, unhedged wrong answers on ambiguous specifications; the other scores marginally lower on raw benchmarks but reliably flags ambiguity and asks a clarifying question instead of guessing. For their specific task — where a wrong confident answer costs more than a clarifying question — the team selects the second model, treating alignment-tax trade-offs as a real input to the decision rather than defaulting to the higher raw-benchmark score.
+**The model-selection decision that weighed calibration explicitly.** Choosing between two model options for a coding-assistant feature, a team finds one scores marginally higher on raw code-generation benchmarks but noticeably more prone to confident, unhedged wrong answers on ambiguous specifications; the other scores marginally lower on raw benchmarks but reliably flags ambiguity and asks a clarifying question instead of guessing. For their specific task — where a wrong confident answer costs more than a clarifying question — the team selects the second model, treating post-training behavior — here, calibration — as a real input to the decision rather than defaulting to the higher raw-benchmark score.
 
 ## Interview questions
 
@@ -136,7 +148,7 @@ This is the chapter's most practical takeaway: alignment happens upstream, at tr
 
 4. **"What's the relationship between RLHF and Constitutional AI?"** — Model answer: they're addressing the same underlying problem — turning a vague value statement into a concrete training signal — from different angles. RLHF uses human comparison judgments to train a reward model, which is expensive and hard to scale purely with human labor. Constitutional AI has the model critique and revise its own outputs against explicit written principles, using AI feedback to supplement or reduce reliance on human labeling, trading some of RLHF's implicit signal for a more scalable and more auditable explicit one — though the constitution itself remains an imperfect specification, so CAI narrows the gap rather than closing it.
 
-5. **"What is the alignment tax, and why does it matter for model selection?"** — Model answer: it's the observed cost that aligned models sometimes underperform their less-aligned base counterparts on narrow capability benchmarks, because alignment training optimizes for a different objective — helpful, harmless, honest as operationalized — than raw next-token prediction accuracy. It matters for model selection because choosing a model isn't just about raw capability; it's about where that model sits on the alignment-tax trade-off for your specific task, which is a real, measurable input alongside cost and latency, not an abstract research concern.
+5. **"What is the alignment tax, and why does it matter for model selection?"** — Model answer: it's the observed cost that aligned models sometimes underperform their less-aligned base counterparts on narrow capability benchmarks, because alignment training optimizes for a different objective — helpful, harmless, honest as operationalized — than raw next-token prediction accuracy. For model selection, the tax itself is rarely measurable — you seldom see a model's base counterpart — but the behaviors post-training produces are: refusal rate, calibration and hedging, verbosity, sycophancy. Those differ between candidate models and matter for a specific task, so I measure them on my own eval alongside cost and latency rather than choosing on a raw benchmark.
 
 ## Exercises and mini-project
 
@@ -146,18 +158,18 @@ This is the chapter's most practical takeaway: alignment happens upstream, at tr
 2. Explain, in your own words, why a reward model trained on human comparisons is a proxy rather than ground truth, and what failure mode that gap produces.
 3. Contrast RLHF and Constitutional AI's approach to the human-labeling bottleneck, and name one thing each still can't guarantee.
 4. Design a calibration probe testing whether a model expresses appropriate uncertainty on genuinely out-of-distribution questions.
-5. Given two hypothetical models with different alignment-tax profiles, design the selection criteria for a task where confident wrong answers are costly.
+5. Given two hypothetical models with different post-training behavior profiles (one bolder, one better calibrated), design the selection criteria for a task where confident wrong answers are costly.
 
 **Mini-project: build an alignment-failure eval suite.** On your capstone or a model you have access to: (a) design and run a sycophancy test — present confidently-asserted incorrect claims and measure the correction rate; (b) design and run a verbosity-bias check on any LLM-judge scoring you use, testing whether length correlates with score independent of content quality; (c) design a calibration probe with genuinely out-of-distribution or unanswerable questions, checking whether the model expresses uncertainty or answers confidently anyway; (d) write a short memo reporting what you found and whether any result surprised you. Target: 2.5 hours. Success criterion: at least one measured instance of a known alignment-adjacent tendency (sycophancy, verbosity bias, or miscalibration) on a model you tested yourself, not just read about.
 
-**Capstone extension:** this chapter's failure modes connect directly to [sec-02](sec-02-guardrails.md)'s guardrail taxonomy and [evl-03](../05-evaluation/evl-03-llm-as-judge.md)'s judge-calibration discipline; alignment-tax reasoning feeds [api-06](../02-llm-apis/api-06-model-selection.md)'s model-selection framework; this chapter closes Module 7 (Safety and Security).
+**Capstone extension:** this chapter's failure modes connect directly to [sec-02](sec-02-guardrails.md)'s guardrail taxonomy and [evl-03](../05-evaluation/evl-03-llm-as-judge.md)'s judge-calibration discipline; post-training behavior profiles feed [api-06](../02-llm-apis/api-06-model-selection.md)'s model-selection framework; this chapter closes Module 7 (Safety and Security).
 
 ## Revision summary
 
 - Alignment is a **specification problem before a training problem**: the difficulty is operationalizing "helpful and harmless" into a concrete training signal that actually captures intent, not getting an optimizer to hit a stated target.
 - **RLHF** trains a reward model on human preference comparisons and optimizes against it; **Constitutional AI** uses AI feedback guided by written principles to reduce reliance on human labeling — both narrow the specification gap without eliminating it as a category of problem.
 - **Specification gaming** is the practical failure mode engineers encounter directly: sycophancy, verbosity-as-quality-proxy, refusal miscalibration, confident hallucination on out-of-distribution questions — all artifacts of optimizing against an imperfect proxy signal, not deliberate model behavior.
-- **Prompting cannot reliably override these trained tendencies** — application engineers work around them via targeted evals, guardrails, and model selection weighing **alignment tax**, not by assuming a clever prompt fixes a training-time gap.
+- **Prompting cannot reliably override these trained tendencies** — application engineers work around them via targeted evals, guardrails, and model selection on measured **post-training behavior** (refusal, calibration, verbosity, sycophancy), not by assuming a clever prompt fixes a training-time gap.
 - **Scalable oversight remains an open research problem**, which is why alignment technique continues evolving rather than having settled into a permanent, solved state.
 
 ## Flashcards
@@ -165,12 +177,14 @@ This is the chapter's most practical takeaway: alignment happens upstream, at tr
 | Q | A |
 |---|---|
 | Why is alignment a specification problem first? | Because the hard part is stating an objective that captures actual intent, not optimizing against a stated one. |
-| RLHF, briefly? | Human comparison judgments train a reward model; the base model is optimized against that reward model's scores. |
+| RLHF, briefly? | Human comparison judgments train a reward model; the SFT model is then optimized against its scores with RL, held near its start by a KL penalty. |
 | Constitutional AI, briefly? | AI self-critique and revision guided by written principles, reducing reliance on human-labeled comparison data. |
 | What is specification gaming? | Satisfying the literal training objective in a way that diverges from intended behavior — an artifact of an imperfect proxy signal. |
 | Four common specification-gaming failures? | Sycophancy, verbosity-as-quality-proxy, refusal miscalibration, confident hallucination on out-of-distribution input. |
 | Can prompting fix these? | Not reliably — they're trained tendencies within the model's distribution, not something a system prompt overrides. |
-| What is the alignment tax? | The measurable capability cost of optimizing for helpful/harmless/honest instead of raw benchmark accuracy — a real input to model selection. |
+| What is the alignment tax? | The capability cost of optimizing a model for helpful/harmless/honest, measured against its own less-aligned base on benchmarks. |
+| What is scalable oversight? | The open research question of how to supervise behavior you can no longer straightforwardly judge once models are more capable than the humans evaluating them. |
+| What can you actually compare across API models instead of the alignment tax? | Post-training behavior on your task: refusal rate, calibration and hedging, verbosity, sycophancy. |
 
 ## Further reading
 
@@ -184,10 +198,12 @@ This is the chapter's most practical takeaway: alignment happens upstream, at tr
 2. Contrast RLHF and Constitutional AI's approach to the human-labeling bottleneck, and state what each still can't guarantee.
 3. Design a factual-agreement eval that would catch sycophancy a general helpfulness rubric would miss.
 4. Explain why a system prompt is unlikely to reliably fix a training-time specification-gaming tendency.
-5. Argue for how alignment tax should factor into a model-selection decision for a specific task you know.
+5. Argue for how post-training behavior (refusal, calibration, verbosity, sycophancy) should factor into a model-selection decision for a specific task you know.
 
 ## Sources
 
-[^ouyang-instructgpt]: [T1] Ouyang et al. (2022). "Training language models to follow instructions with human feedback." arXiv:2203.02155. https://arxiv.org/abs/2203.02155 (accessed 2026-07-18)
-[^bai-cai]: [T1] Bai et al. (2022). "Constitutional AI: Harmlessness from AI Feedback." arXiv:2212.08073. https://arxiv.org/abs/2212.08073 (accessed 2026-07-18)
-[^krakovna-specgaming]: [T2] Krakovna, V. et al. (2020). "Specification gaming: the flip side of AI ingenuity." DeepMind. https://deepmind.google/discover/blog/specification-gaming-the-flip-side-of-ai-ingenuity/ (accessed 2026-07-18)
+[^ouyang-instructgpt]: [T2] Ouyang et al. (2022). "Training language models to follow instructions with human feedback." arXiv:2203.02155. https://arxiv.org/abs/2203.02155 (accessed 2026-07-18)
+[^bai-cai]: [T2] Bai et al. (2022). "Constitutional AI: Harmlessness from AI Feedback." arXiv:2212.08073. https://arxiv.org/abs/2212.08073 (accessed 2026-07-18)
+[^krakovna-specgaming]: [T4] Krakovna, V. et al. (2020). "Specification gaming: the flip side of AI ingenuity." DeepMind. https://deepmind.google/discover/blog/specification-gaming-the-flip-side-of-ai-ingenuity/ (accessed 2026-07-18)
+[^sharma-sycophancy]: [T2] Sharma et al. (2023). "Towards Understanding Sycophancy in Language Models." Anthropic; ICLR 2024. arXiv:2310.13548. https://arxiv.org/abs/2310.13548 (accessed 2026-10-08)
+[^bowman-oversight]: [T2] Bowman et al. (2022). "Measuring Progress on Scalable Oversight for Large Language Models." Anthropic. arXiv:2211.03540. https://arxiv.org/abs/2211.03540 (accessed 2026-10-08)

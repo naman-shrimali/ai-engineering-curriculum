@@ -274,7 +274,7 @@ Treat this as directionally important rather than immediately actionable: it exp
 
 **Mini-project: tune a serving deployment.** Using vLLM (or equivalent) with an open-weight model from [api-07](../02-llm-apis/api-07-local-inference.md): (a) replay your capstone's real prompt-length and output-length distribution from traces as a benchmark load; (b) measure TTFT, TPOT, throughput, and goodput at three max-concurrency settings and plot the trade-off curve; (c) compute the predicted KV memory at each and compare to observed capacity; (d) toggle chunked prefill with a long-prompt request mixed into interactive load, and measure the effect on other requests' TPOT; (e) verify prefix caching is hitting by comparing TTFT for repeated versus novel prefixes; (f) memo: your goodput-optimal configuration and the napkin math that predicted it. Target: 5 hours. Success criterion: a measured throughput/latency curve for your own traffic shape, and a demonstrated chunked-prefill effect.
 
-**Capstone extension:** this is the model tier inside [prd-01](prd-01-architecture-patterns.md)'s architecture; [prd-03](prd-03-inference-optimization.md) makes it faster, [prd-06](prd-06-deployment-infrastructure.md) provisions the hardware, and [prd-05](prd-05-cost-engineering.md) turns the throughput numbers into unit economics.
+**Capstone extension:** this is the model tier inside [prd-01](prd-01-architecture-patterns.md)'s architecture; [prd-03](prd-03-inference-optimization.md) makes it faster, [prd-06](prd-06-deployment-infrastructure.md) provisions the hardware, and [prd-05](prd-05-cost-engineering.md) makes cost per task the measure the throughput numbers feed.
 
 ## Revision summary
 

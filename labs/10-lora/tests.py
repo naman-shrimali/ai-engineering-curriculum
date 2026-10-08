@@ -27,6 +27,12 @@ def test_lora_forward_by_hand():
     assert approx(got, [13, 2, 3]), f'lora_forward returned {got!r}, expected [13, 2, 3]'
 
 
+def test_scale_alpha_over_r():
+    """scale = α/r multiplies only the low-rank path: with scale 2 the update [6, 0, -3] doubles, giving [19, 2, 0]"""
+    got = lora_forward(W, A, B, X, scale=2.0)
+    assert approx(got, [19, 2, 0]), f'lora_forward(..., scale=2.0) returned {got!r}, expected [19, 2, 0]'
+
+
 def test_zero_update_is_the_base_layer():
     """With B all zeros the adapter contributes nothing: the output is Wx"""
     got = lora_forward(W, A, [[0], [0], [0]], X)

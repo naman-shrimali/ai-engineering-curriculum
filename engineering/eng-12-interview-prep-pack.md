@@ -24,13 +24,7 @@ est_minutes: 45
 status: evolving
 volatility: mixed
 last_reviewed: 2026-07-10
-sources:
-  - key: fro-05-pointer
-    tier: 1
-    title: "This repository — fro-05: The AI Engineer Interview & Portfolio (manifest-specified)"
-    org: AI Engineering Curriculum
-    url: https://github.com/
-    accessed: 2026-07-10
+sources: []
 ---
 
 # Interview-Prep Pack
@@ -103,4 +97,4 @@ Distilled from the curriculum's recurring themes — the tells that mark a stron
 
 ## Sources
 
-[^fro-05-pointer]: [T1] This repository. fro-05 "The AI Engineer Interview & Portfolio" — manifest-specified companion chapter (path: modules/09-frontier/fro-05-interviews-portfolio.md). Placeholder URL pending repository publication. (accessed 2026-07-10)
+This pack indexes the curriculum's own question bank, flashcards and revision summaries, so it cites no external sources of its own; each linked chapter carries the sources behind its questions.

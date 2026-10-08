@@ -5,9 +5,10 @@ module: safety-security
 prerequisites: [api-01]
 related_ids: [sec-02, rag-04, prd-01]
 keywords:
-  - PII handling
+  - pii handling
   - data residency
-  - GDPR
+  - gdpr
+  - eu ai act
   - training data opt-out
   - retention policy
   - zero data retention
@@ -23,15 +24,33 @@ summary: >-
 difficulty: 2
 est_minutes: 150
 status: evolving
-volatility: high
+volatility: mixed
 last_reviewed: 2026-07-16
 sources:
   - key: gdpr-text
-    tier: 3
-    title: "General Data Protection Regulation (GDPR)"
-    org: European Union
-    url: https://gdpr-info.eu/
-    accessed: 2026-07-16
+    tier: 1
+    title: "Regulation (EU) 2016/679 (General Data Protection Regulation)"
+    org: European Union (EUR-Lex)
+    url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    accessed: 2026-10-08
+  - key: eu-ai-act
+    tier: 1
+    title: "Regulation (EU) 2024/1689 (Artificial Intelligence Act)"
+    org: European Union (EUR-Lex)
+    url: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
+    accessed: 2026-10-08
+  - key: ai-act-timeline
+    tier: 1
+    title: "Timeline for the implementation of the EU AI Act"
+    org: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/timeline/timeline-implementation-eu-ai-act
+    accessed: 2026-10-08
+  - key: edpb-ai-models
+    tier: 1
+    title: "Opinion 28/2024 on certain data protection aspects related to the processing of personal data in the context of AI models"
+    org: European Data Protection Board
+    url: https://www.edpb.europa.eu/documents/opinion-of-the-board-art-64/opinion-282024-on-certain-data-protection-aspects-related-to_en
+    accessed: 2026-10-08
   - key: anthropic-privacy
     tier: 1
     title: "Privacy at Anthropic"
@@ -48,37 +67,46 @@ sources:
 
 # Privacy and Compliance
 
-[api-01](../02-llm-apis/api-01-llm-api-fundamentals.md) established that every API call sends data to a third party over a network boundary. This chapter is about what that fact means the moment the data crossing that boundary is personal — because from that moment, the system inherits an entire body of regulation and data-handling obligation that has nothing to do with model quality and everything to do with whether the product can legally operate. The organizing claim is that this is engineering work, not just legal review: redaction, residency-aware routing, retention limits, and deletion propagation are concrete system properties an engineer designs in, and retrofitting them after a system ships is measurably harder than building them in from the first data flow diagram.
+[api-01](../02-llm-apis/api-01-llm-api-fundamentals.md) treats the model API as a third-party remote dependency — which, for privacy, means every call sends data across a network boundary to another company. This chapter is about what that fact means the moment the data crossing that boundary is personal — because from that moment, the system inherits an entire body of regulation and data-handling obligation that has nothing to do with model quality and everything to do with whether the product can legally operate. The organizing claim is that this is engineering work, not just legal review: redaction, residency-aware routing, retention limits, and deletion propagation are concrete system properties an engineer designs in, and retrofitting them after a system ships is measurably harder than building them in from the first data flow diagram.
 
 ## Intuition: an LLM pipeline is a new place personal data can live
 
-A conventional application's personal-data footprint is enumerable — it lives in specific database tables, specific columns, with an access-control model an engineer can point to on a diagram. An LLM pipeline scatters that same data across several new surfaces a conventional compliance review was never built to find: **prompts** sent to a third-party API, **logs and traces** captured for observability ([evl-04](../05-evaluation/evl-04-tracing-observability.md)), **retrieved context** pulled from a vector store that may contain personal data indexed for semantic search ([rag-04](../03-retrieval/rag-04-chunking-strategies.md)), **provider-side retention** of requests for abuse monitoring or (absent an opt-out) model improvement, and **model outputs** that may reproduce or infer personal data never explicitly stored anywhere. **Compliance work for an LLM system starts with mapping this footprint explicitly**, because none of these surfaces is where a data-protection officer would think to look first if their prior experience is conventional application architecture.
+A conventional application's personal-data footprint is enumerable — it lives in specific database tables, specific columns, with an access-control model an engineer can point to on a diagram. An LLM pipeline scatters that same data across several new surfaces a conventional compliance review was never built to find: **prompts** sent to a third-party API, **logs and traces** captured for observability ([evl-04](../05-evaluation/evl-04-tracing-observability.md)), **retrieved context** pulled from a vector store that may contain personal data indexed for semantic search ([rag-03](../03-retrieval/rag-03-vector-databases.md)), **provider-side retention** of requests for abuse monitoring or (absent an opt-out) model improvement, and **model outputs** that may reproduce or infer personal data never explicitly stored anywhere. **Compliance work for an LLM system starts with mapping this footprint explicitly**, because none of these surfaces is where a data-protection officer would think to look first if their prior experience is conventional application architecture.
 
 ## What actually differs about PII here
 
 **Prompts are a new transmission channel with its own retention question.** Every request to a hosted model API is, from a data-protection standpoint, a data transfer to a processor, and the governing question is what that processor's contract says about retention and use — most enterprise-tier API agreements now offer contractual guarantees against using submitted data for model training and defined retention windows for abuse-monitoring purposes,[^anthropic-privacy][^openai-enterprise-privacy] but these terms vary by provider, by tier, and change over time, which makes "read the current data processing agreement" a standing engineering task, not a one-time legal check.
 
-**Logs and traces are an easy-to-miss PII surface.** An observability pipeline built to debug quality issues ([evl-04](../05-evaluation/evl-04-tracing-observability.md)) will, by default, capture full prompts and completions — meaning the same PII a compliance review scrutinized in the primary data path is silently duplicated into a logging system with a different (often longer, often less access-controlled) retention policy. This is one of the most common gaps found in production LLM system audits, precisely because logging is added for engineering reasons with no privacy review attached.
+**Logs and traces are an easy-to-miss PII surface.** An observability pipeline built to debug quality issues ([evl-04](../05-evaluation/evl-04-tracing-observability.md)) will, by default, capture full prompts and completions — meaning the same PII a compliance review scrutinized in the primary data path is silently duplicated into a logging system with a different (often longer, often less access-controlled) retention policy. It is an easy gap to ship, precisely because logging is added for engineering reasons with no privacy review attached — which is why [evl-04](../05-evaluation/evl-04-tracing-observability.md) insists on redaction on the write path.
 
-**Retrieved context can leak across a trust boundary the retrieval pipeline wasn't designed to enforce.** A RAG system indexing documents from multiple sources or multiple users needs the same document-level access control at retrieval time that it would need at direct-read time ([rag-04](../03-retrieval/rag-04-chunking-strategies.md), [rag-05](../03-retrieval/rag-05-rag-pipeline.md)) — a semantic search that returns a chunk from a document User A shouldn't see, because the retrieval index has no concept of per-user permissions, is a real, concrete access-control failure with the same severity as a database query missing a `WHERE user_id = ?` clause.
+**Retrieved context can leak across a trust boundary the retrieval pipeline wasn't designed to enforce.** A RAG system indexing documents from multiple sources or multiple users needs the same document-level access control at retrieval time that it would need at direct-read time ([rag-03](../03-retrieval/rag-03-vector-databases.md), [rag-05](../03-retrieval/rag-05-rag-pipeline.md)) — a semantic search that returns a chunk from a document User A shouldn't see, because the retrieval index has no concept of per-user permissions, is a real, concrete access-control failure with the same severity as a database query missing a `WHERE user_id = ?` clause.
 
 **Model outputs can contain inferred or reproduced personal data that was never stored as such.** A model summarizing a document containing personal data reproduces that data in its output by design; a model asked to "guess" personal details from indirect context can produce plausible-sounding personal data that was never explicitly provided at all — both are outputs a downstream system needs to treat as containing PII even though no upstream database ever labeled them that way.
 
 ## Regulatory frameworks, at engineering resolution
 
-**GDPR** (EU) is the framework most production systems design against by default, because its requirements — lawful basis for processing, data minimization, the right to access, the right to deletion (erasure), and cross-border transfer restrictions — are typically the strictest a global product will face, so meeting GDPR tends to satisfy or nearly satisfy comparable regimes elsewhere.[^gdpr-text] The engineering-relevant requirements, concretely: **data minimization** (don't send more personal data to a model call than the task requires — [rag-04](../03-retrieval/rag-04-chunking-strategies.md)'s chunking granularity is a privacy lever, not just a retrieval-quality one, since a coarser chunk drags more unrelated personal data into every retrieval), **the right to deletion** (a user's data must be removable, which is straightforward for a database row and genuinely hard for anything that touched a model — see below), and **data residency** (some jurisdictions and some enterprise contracts require personal data to stay within a specific geographic or legal boundary, which constrains which provider regions or self-hosted deployments are viable, tying directly back to [prd-01](../06-production/prd-01-architecture-patterns.md)'s build-vs-buy and deployment-topology decisions).
+**GDPR** (EU) is the framework most production systems design against by default, because its requirements — lawful basis for processing, data minimization, the right to access, the right to deletion (erasure), and cross-border transfer restrictions — are typically the strictest a global product will face, so designing against GDPR covers much of what comparable regimes ask — though not all of it: others add their own consent, opt-out, localization or sector rules, so map each jurisdiction you actually serve.[^gdpr-text] The engineering-relevant requirements, concretely: **data minimization** (don't send more personal data to a model call than the task requires — [rag-04](../03-retrieval/rag-04-chunking.md)'s chunking granularity is a privacy lever, not just a retrieval-quality one, since a coarser chunk drags more unrelated personal data into every retrieval), **the right to deletion** (a user's data must be removable, which is straightforward for a database row and genuinely hard for anything that touched a model — see below), and **data residency** (some jurisdictions and some enterprise contracts require personal data to stay within a specific geographic or legal boundary, which constrains which provider regions or self-hosted deployments are viable, tying directly to providers' residency and data-use options in [api-06](../02-llm-apis/api-06-model-selection.md)'s selection criteria and to the self-hosting decision, where [api-07](../02-llm-apis/api-07-local-inference.md) notes that hard governance constraints win outright).
 
 **Sector-specific regimes** (HIPAA for health data in the US, financial-services regulations, children's-data protections) layer additional, often stricter constraints on top of a general framework like GDPR, and typically require specific contractual terms with any AI provider (a Business Associate Agreement for HIPAA, for instance) before that provider can legally process the relevant data at all — a check that belongs in the vendor-selection process from [api-06](../02-llm-apis/api-06-model-selection.md), not discovered after integration.
+
+**The EU AI Act** sits beside GDPR, not in place of it: GDPR governs the personal data, while the AI Act (Regulation (EU) 2024/1689, in force since August 2024) governs the AI system itself, by risk tier.[^eu-ai-act] Most LLM features land in its lighter tiers, but four parts reach engineers:
+
+- **Prohibited practices** — for example, manipulative techniques that cause significant harm, or social scoring — have applied since February 2025.
+- **Transparency obligations** (Article 50) apply from August 2026: tell people they are interacting with an AI system unless that is obvious, and mark AI-generated content in a machine-readable way. They reach ordinary chat and generation features, which is where [fro-02](../09-frontier/fro-02-generative-media.md)'s provenance work becomes a compliance property.
+- **High-risk obligations** — risk management, data governance, logging, human oversight, technical documentation — apply when a system is used in listed high-stakes domains such as hiring, credit, education or biometrics. There, the logging and data-governance patterns below stop being good practice and become requirements.
+- **General-purpose AI model obligations** (documentation, a copyright policy, a public summary of training content, with more for the largest models) have applied since August 2025. They fall on model providers — substantially modifying a model can make you one — rather than on teams that call a model through an API.
+
+> **Volatile:** the AI Act's dates have already been amended once — a 2026 "Digital Omnibus" amendment pushed the stand-alone high-risk obligations to December 2027 — and implementing guidance keeps arriving. Check the Commission's current timeline before planning against any date.[^ai-act-timeline]
 
 ## Engineering patterns that make compliance a design property
 
 **PII redaction before the model call**, for workloads where the task doesn't actually need the raw personal data — replacing names, identifiers, and contact details with placeholders before sending a prompt, and reinserting them into the response afterward if needed. This is the most direct data-minimization control available and is often cheap relative to the alternative of justifying full PII exposure to every model call.
 
-**Residency-aware routing**, sending requests to a specific provider region (or a self-hosted deployment, per [prd-01](../06-production/prd-01-architecture-patterns.md)'s build-vs-buy framework) based on the data's jurisdiction — a routing decision made at the same architectural layer as the model-selection cascade in [prd-05](../06-production/prd-05-cost-engineering.md), with a compliance constraint added to the routing logic rather than a purely cost/latency one.
+**Residency-aware routing**, sending requests to a specific provider region (or a self-hosted deployment, per [api-07](../02-llm-apis/api-07-local-inference.md)'s self-hosting decision) based on the data's jurisdiction — a routing decision made at the same architectural layer as the model-selection cascade in [prd-05](../06-production/prd-05-cost-engineering.md), with a compliance constraint added to the routing logic rather than a purely cost/latency one.
 
 **Retention policy enforcement across every surface that touched the data** — not just the primary datastore, but logs, traces, cached responses, and any fine-tuning or eval dataset that happened to be built from production traffic. A retention policy that only covers the primary database while logs retain full prompts indefinitely is not a retention policy; it's a retention policy with a hole.
 
-**Deletion propagation** is the hardest of these in practice: a user's right-to-deletion request must reach every surface storing their data, including logs, traces, vector-store embeddings built from documents containing their data, and any cached or derived artifacts — and, distinctly, **a model that was fine-tuned on data including that user's personal information cannot have that data "deleted" from its weights** in any clean, surgical sense; the practical answer is either not fine-tuning on raw personal data in the first place ([ftn-01](../08-fine-tuning/ftn-01-customization-decision.md)'s decision framework should weigh this explicitly) or accepting that deletion means the *next* training run excludes the deleted data, not that the current model is retroactively altered.
+**Deletion propagation** is the hardest of these in practice: a user's right-to-deletion request must reach every surface storing their data, including logs, traces, vector-store embeddings built from documents containing their data, and any cached or derived artifacts — and, distinctly, **a model that was fine-tuned on data including that user's personal information cannot have that data "deleted" from its weights** in any clean, surgical sense; the practical answer is either not fine-tuning on raw personal data in the first place ([ftn-01](../08-fine-tuning/ftn-01-customization-decision.md)'s decision framework weighs this explicitly) or accepting that deletion means the *next* training run excludes the deleted data, not that the current model is retroactively altered. Whether that satisfies an erasure request is a legal question, not an engineering one: European regulators' position is that a model trained on personal data is not automatically anonymous — it depends on how likely that data can be extracted or regurgitated from it[^edpb-ai-models] — so agree the approach with counsel before relying on it, and test the model for regurgitation of the data in question.
 
 ## Production engineering perspective
 
@@ -92,7 +120,7 @@ A conventional application's personal-data footprint is enumerable — it lives 
 
 ## Historical evolution
 
-**2018:** GDPR takes effect, establishing the baseline framework most production systems now design against by default, years before LLM-integrated applications existed at scale — meaning the regulation predates and wasn't written with generative-AI-specific data flows in mind, which is exactly why applying it to LLM pipelines requires the kind of first-principles mapping this chapter does rather than a checklist transposition. **2022–2023:** as LLM features ship broadly, teams discover the PII-surface-scattering problem largely by audit finding rather than design — logs capturing full prompts, RAG indices with no per-user access control — because compliance review processes built for conventional applications didn't have the new surfaces on their checklist. **2023:** enterprise-tier API agreements with explicit no-training-on-customer-data guarantees and defined retention windows become standard competitive features among major providers,[^anthropic-privacy][^openai-enterprise-privacy] driven directly by enterprise customers' compliance requirements. **2023–2024:** data residency becomes a first-class deployment consideration as providers add region-specific hosting options, connecting privacy requirements directly to the architecture decisions [prd-01](../06-production/prd-01-architecture-patterns.md) covers generally. **2024–present:** "compliance by design" — PII mapping, redaction, residency-aware routing, and deletion-propagation architecture built in from the first system design, not retrofitted after an audit finding — becomes the maturity marker separating experienced production LLM teams from teams treating compliance as a late-stage legal gate.
+**2018:** GDPR takes effect, establishing the baseline framework most production systems now design against by default, years before LLM-integrated applications existed at scale — meaning the regulation predates and wasn't written with generative-AI-specific data flows in mind, which is exactly why applying it to LLM pipelines requires the kind of first-principles mapping this chapter does rather than a checklist transposition. **2022–2023:** as LLM features ship broadly, teams discover the PII-surface-scattering problem largely by audit finding rather than design — logs capturing full prompts, RAG indices with no per-user access control — because compliance review processes built for conventional applications didn't have the new surfaces on their checklist. **2023:** enterprise-tier API agreements with explicit no-training-on-customer-data guarantees and defined retention windows become standard competitive features among major providers,[^anthropic-privacy][^openai-enterprise-privacy] driven directly by enterprise customers' compliance requirements. **2023–2024:** data residency becomes a first-class deployment consideration as providers add region-specific hosting options, connecting privacy requirements directly to provider-selection and self-hosting decisions ([api-06](../02-llm-apis/api-06-model-selection.md), [api-07](../02-llm-apis/api-07-local-inference.md)). **2024–2026:** the EU AI Act enters into force in August 2024 and phases in — prohibitions from February 2025, general-purpose-model rules from August 2025, transparency duties from August 2026 — adding rules for AI systems alongside GDPR's rules for data.[^eu-ai-act][^ai-act-timeline] **2024–present:** "compliance by design" — PII mapping, redaction, residency-aware routing, and deletion-propagation architecture built in from the first system design, not retrofitted after an audit finding — becomes the maturity marker separating experienced production LLM teams from teams treating compliance as a late-stage legal gate.
 
 ## Common misconceptions
 
@@ -127,13 +155,13 @@ A conventional application's personal-data footprint is enumerable — it lives 
 
 **The RAG index that ignored tenant boundaries.** A multi-tenant document-QA product indexes all customers' documents into a shared vector store for operational simplicity, with access control applied only at the application layer for direct document browsing — but the RAG retrieval path queries the shared index without the same filter, occasionally surfacing a chunk from Tenant A's documents in a response generated for Tenant B. The fix is architectural: filter retrieval candidates by tenant scope *before* ranking, not as a post-hoc check on results — the same fix pattern as adding a missing `WHERE` clause to a database query, applied to a retrieval pipeline.
 
-**The deletion request that couldn't fully complete.** A user exercises their right to deletion; the team successfully removes their data from the primary database and the vector-store index, but the data had also been included in a fine-tuning dataset for a custom model three months earlier. The team's honest resolution: the current model can't be surgically altered, so they commit to excluding the user's data from the next training run and document this limitation in their data-handling disclosure — a resolution only available because they'd thought about fine-tuning-data provenance before this request arrived, not during it.
+**The deletion request that couldn't fully complete.** A user exercises their right to deletion; the team successfully removes their data from the primary database and the vector-store index, but the data had also been included in a fine-tuning dataset for a custom model three months earlier. The team's honest resolution, agreed with counsel: the current model can't be surgically altered, so they test it for regurgitation of the user's data, commit to excluding that data from the next training run, and document this limitation in their data-handling disclosure — a resolution only available because they'd thought about fine-tuning-data provenance before this request arrived, not during it.
 
 ## Interview questions
 
 1. **"What's different about PII exposure in an LLM pipeline compared to a conventional application?"** — Model answer: a conventional application's PII footprint is enumerable — specific tables, specific columns. An LLM pipeline scatters the same data across new surfaces a conventional review often misses: the prompt itself as a data transfer to a third-party processor, logs and traces that by default capture full prompts and completions, retrieved context from a vector store that may lack per-user access control, provider-side retention terms, and model outputs that can reproduce or even infer personal data never explicitly stored. Compliance work here starts with mapping that expanded footprint explicitly.
 
-2. **"How would you handle the right to deletion for a system that includes a RAG pipeline and a fine-tuned model?"** — Model answer: for the primary database and the vector-store index, deletion propagation is achievable — remove the row and re-index. For a model fine-tuned on data including that user's information, there's no clean surgical deletion from the weights; the honest, practical answer is committing to exclude the data from the next training run and disclosing that limitation, which is only a clean answer if the team thought about fine-tuning data provenance before the deletion request arrived, which argues for weighing this explicitly at the ftn-01 customization-decision stage.
+2. **"How would you handle the right to deletion for a system that includes a RAG pipeline and a fine-tuned model?"** — Model answer: for the primary database and the vector-store index, deletion propagation is achievable — remove the row and re-index. For a model fine-tuned on data including that user's information, there's no clean surgical deletion from the weights; the honest, practical answer is committing to exclude the data from the next training run, testing the current model for regurgitation, disclosing that limitation, and confirming with counsel that this satisfies the request — regulators don't treat a trained model as automatically anonymous — which is only a clean answer if the team thought about fine-tuning data provenance before the deletion request arrived, which argues for weighing this explicitly at the ftn-01 customization-decision stage.
 
 3. **"Why is data minimization more than a compliance checkbox for retrieval-augmented systems?"** — Model answer: chunking granularity is a privacy lever, not just a retrieval-quality one — a coarser chunk pulls more unrelated personal data into every retrieval that touches it, and a system indexing multiple users' or tenants' documents needs the same access control at retrieval time it would need at direct-read time, or semantic search will surface content across a trust boundary the index has no concept of. Minimization here means both redacting what doesn't need to be sent to the model and scoping what retrieval is even allowed to surface.
 
@@ -153,12 +181,13 @@ A conventional application's personal-data footprint is enumerable — it lives 
 
 **Mini-project: PII-map and redact your capstone.** On your capstone: (a) map every surface personal data (real or synthetic test data) touches — prompts, logs, retrieved context, outputs; (b) implement redaction before at least one model call for fields the task doesn't need; (c) check your logging/observability pipeline for unredacted PII and fix any gap found; (d) if your system includes retrieval over multi-source or multi-user data, verify (or add) access-control filtering at retrieval time; (e) write a one-page data-handling note: what's collected, where it's sent, how long it's retained, and what a deletion request would actually require touching. Target: 3 hours. Success criterion: a PII map that surfaces at least one gap you didn't expect, and a concrete fix for it.
 
-**Capstone extension:** residency and provider-terms decisions connect to [api-06](../02-llm-apis/api-06-model-selection.md) and [prd-01](../06-production/prd-01-architecture-patterns.md)'s build-vs-buy framework; retrieval access control extends [rag-04](../03-retrieval/rag-04-chunking-strategies.md) and [rag-05](../03-retrieval/rag-05-rag-pipeline.md); fine-tuning data provenance connects forward to [ftn-01](../08-fine-tuning/ftn-01-customization-decision.md).
+**Capstone extension:** residency and provider-terms decisions connect to [api-06](../02-llm-apis/api-06-model-selection.md)'s selection criteria and [api-07](../02-llm-apis/api-07-local-inference.md)'s self-hosting decision; retrieval access control extends [rag-03](../03-retrieval/rag-03-vector-databases.md) and [rag-05](../03-retrieval/rag-05-rag-pipeline.md); fine-tuning data provenance connects forward to [ftn-01](../08-fine-tuning/ftn-01-customization-decision.md).
 
 ## Revision summary
 
 - An LLM pipeline scatters PII across surfaces a conventional compliance review often misses: **prompts** (a transfer to a third-party processor), **logs/traces**, **retrieved context**, **provider-side retention**, and **model outputs** that can reproduce or infer personal data.
-- GDPR-level requirements at engineering resolution: **data minimization** (redaction, chunking granularity), **right to deletion** (propagation across every surface, and the hard unsolved case of fine-tuned model weights), **data residency** (routing constraint tied to [prd-01](../06-production/prd-01-architecture-patterns.md)'s deployment topology).
+- GDPR-level requirements at engineering resolution: **data minimization** (redaction, chunking granularity), **right to deletion** (propagation across every surface, and the hard unsolved case of fine-tuned model weights), **data residency** (a routing constraint tied to provider region options and the self-hosting decision — [api-06](../02-llm-apis/api-06-model-selection.md), [api-07](../02-llm-apis/api-07-local-inference.md)).
+- The **EU AI Act** regulates the AI system by risk tier alongside GDPR: prohibitions (from 2025), transparency duties for chat and generated content (from August 2026), and heavier obligations for high-risk uses — with dates still moving, so check the current timeline.
 - Concrete engineering patterns: **redaction before model calls**, **residency-aware routing**, **retention policy extended to logs and derived artifacts**, and **deletion propagation designed in per data type** rather than assumed.
 - The hardest unsolved case: a model fine-tuned on personal data has no clean deletion path from its weights — the practical answer is controlling training-data inclusion up front, not retroactive removal.
 - Compliance is engineering work — redaction, access control, retention, propagation are concrete system properties designed in from the first architecture diagram, not a late-stage legal gate.
@@ -169,15 +198,17 @@ A conventional application's personal-data footprint is enumerable — it lives 
 |---|---|
 | Five PII surfaces in an LLM pipeline? | Prompts, logs/traces, retrieved context, provider-side retention, model outputs. |
 | Why is chunking a privacy lever? | Coarser chunks drag more unrelated personal data into every retrieval that touches them. |
-| Most commonly missed compliance surface in production audits? | Logs and traces capturing full prompts/completions with weaker access control and longer retention than the primary system. |
+| What compliance surface is easiest to miss? | Logs and traces capturing full prompts/completions with weaker access control and longer retention than the primary system. |
 | Why is deletion propagation hard for fine-tuned models? | No clean, surgical way to remove specific training data from model weights after the fact. |
 | What does data residency constrain? | Which provider regions or self-hosted deployments are viable for a given jurisdiction's data. |
 | Why does per-user access control matter at retrieval time, not just ingestion? | Semantic search can surface a chunk across a trust boundary the index has no concept of, without it. |
-| The practical answer to "can't delete from a fine-tuned model"? | Exclude the data from the next training run and disclose the limitation — not retroactive removal. |
+| The practical answer to "can't delete from a fine-tuned model"? | Exclude the data from the next training run, test for regurgitation, disclose the limitation, and confirm legal adequacy with counsel. |
+| What does PII redaction before a model call do? | For tasks that don't need the raw data, it swaps names, identifiers and contact details for placeholders before the call, reinserting them afterward if needed. |
+| How does the EU AI Act relate to GDPR? | It sits beside it: GDPR governs the personal data; the AI Act governs the AI system by risk tier (prohibited, high-risk, transparency duties). |
 
 ## Further reading
 
-- **Regulation:** GDPR full text[^gdpr-text] — the baseline framework most global products design against.
+- **Regulation:** GDPR full text[^gdpr-text] — the baseline framework most global products design against; the AI Act text[^eu-ai-act] and the Commission's implementation timeline[^ai-act-timeline]; the EDPB's opinion on personal data in AI models[^edpb-ai-models] — the regulators' view on when a trained model still holds personal data.
 - **Official docs:** Anthropic's[^anthropic-privacy] and OpenAI's[^openai-enterprise-privacy] privacy and enterprise data-handling pages — the concrete, current contractual terms this chapter's redaction and retention advice assumes you'll verify directly rather than take on faith.
 - **Tutorials:** run the mini-project's PII-mapping exercise on a real (or realistic synthetic) system before reading further regulatory text — the gaps it surfaces are more instructive than the abstract requirements.
 
@@ -186,11 +217,14 @@ A conventional application's personal-data footprint is enumerable — it lives 
 1. List the five PII surfaces an LLM pipeline introduces beyond a conventional application's data footprint.
 2. Explain why chunking granularity is a privacy-relevant design decision, not just a retrieval-quality one.
 3. Design the deletion-propagation checklist for a system with a primary database, a vector store, logs, and a fine-tuned model.
-4. Explain why data residency constrains architecture decisions, and name at least one prd-01 decision it interacts with.
+4. Explain why data residency constrains architecture decisions, and name at least one architecture decision it interacts with (provider and region choice, [api-06](../02-llm-apis/api-06-model-selection.md); self-hosting, [api-07](../02-llm-apis/api-07-local-inference.md)).
 5. Argue for the right redaction scope for a specific task you know, balancing minimization against task utility.
 
 ## Sources
 
-[^gdpr-text]: [T3] European Union. "General Data Protection Regulation." https://gdpr-info.eu/ (accessed 2026-07-16)
+[^gdpr-text]: [T1] European Union. "Regulation (EU) 2016/679 (General Data Protection Regulation)." EUR-Lex. https://eur-lex.europa.eu/eli/reg/2016/679/oj (accessed 2026-10-08)
+[^eu-ai-act]: [T1] European Union. "Regulation (EU) 2024/1689 (Artificial Intelligence Act)." EUR-Lex. https://eur-lex.europa.eu/eli/reg/2024/1689/oj (accessed 2026-10-08)
+[^ai-act-timeline]: [T1] European Commission, AI Act Service Desk. "Timeline for the implementation of the EU AI Act." https://ai-act-service-desk.ec.europa.eu/en/ai-act/timeline/timeline-implementation-eu-ai-act (accessed 2026-10-08)
+[^edpb-ai-models]: [T1] European Data Protection Board (2024). "Opinion 28/2024 on certain data protection aspects related to the processing of personal data in the context of AI models." https://www.edpb.europa.eu/documents/opinion-of-the-board-art-64/opinion-282024-on-certain-data-protection-aspects-related-to_en (accessed 2026-10-08)
 [^anthropic-privacy]: [T1] Anthropic. "Privacy." https://www.anthropic.com/legal/privacy (accessed 2026-07-16)
 [^openai-enterprise-privacy]: [T1] OpenAI. "Enterprise privacy." https://openai.com/enterprise-privacy/ (accessed 2026-07-16)

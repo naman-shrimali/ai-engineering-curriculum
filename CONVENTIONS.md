@@ -62,7 +62,7 @@ Rules:
 ### Glossary
 
 - Single shared file: `glossary.md`, alphabetized, one term per entry: `**KV cache** — definition (≤2 sentences). *See: fnd-05, prd-02.*`
-- First use of a glossary term in a chapter links to it: `[KV cache](../../glossary.md#kv-cache)`. Anchors are the lowercase kebab-case term.
+- The reader app links glossary terms automatically: the first prose occurrence of each term in every H2 section gets a hover card and a link to its entry (`app/lib/md.js`, `glossaryHover`), so chapters do not hand-insert glossary links. A manual link is still allowed where a term must link in a place the automatic pass skips (headings, tables, blockquotes, code, emphasis): `[KV cache](../../glossary.md#kv-cache)`. Anchors are the lowercase kebab-case term.
 - A term earns a glossary entry when it's used in ≥3 chapters or is commonly misused in industry. Chapter-local jargon is defined inline instead.
 
 ### Citation format

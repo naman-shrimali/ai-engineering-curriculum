@@ -105,7 +105,7 @@ The instrumentation, connecting directly to [evl-05](../05-evaluation/evl-05-onl
 
 **Alert on drift from a rolling baseline, never on a fixed absolute threshold.** [evl-05](../05-evaluation/evl-05-online-evaluation.md) established why: quality wanders rather than crossing a line, so a week-over-week or day-over-day deviation catches degradation that no static threshold would trip.
 
-**Watch the composite signal set**, because any one alone is noisy: judge score, refusal rate, abstention rate, regeneration rate, escalation-to-human rate, and — cross-referenced against [prd-03](prd-03-inference-optimization.md) — cost per task, since a silent config or model-version change often shows up in the cost line before the quality line moves visibly.
+**Watch the composite signal set**, because any one alone is noisy: judge score, refusal rate, abstention rate, regeneration rate, escalation-to-human rate, and — cross-referenced against [prd-05](prd-05-cost-engineering.md) — cost per task, since a silent config or model-version change often shows up in the cost line before the quality line moves visibly.
 
 **The four causes, and the diagnostic for each** — model drift under an unpinned alias ([fnd-07](../01-foundations/fnd-07-post-training.md); check the pinned-version audit first, since it's free), corpus or index staleness ([rag-05](../03-retrieval/rag-05-rag-pipeline.md); check ingestion-job health and change-to-queryable lag), traffic-distribution shift into an unfamiliar segment (check the input-category mix against baseline), and a silent pipeline failure feeding stale or empty context (check per-stage error rates from traces).
 

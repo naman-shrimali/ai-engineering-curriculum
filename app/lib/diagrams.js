@@ -367,7 +367,8 @@ function camera(D) {
     st.k = Math.min(full() ? 1.6 : 1, (cw - 24) / W, (ch - 24) / H);
     st.tx = Math.max(12, (cw - W * st.k) / 2);
     st.ty = full() ? Math.max(12, (ch - H * st.k) / 2) : 12;
-    wrap.style.height = full() ? '' : Math.min(H * st.k, maxH()) + 24 + 'px';
+    // inline, leave a band under the drawing for the zoom tools and the layout hint, so they never sit on a node
+    wrap.style.height = full() ? '' : Math.min(H * st.k, maxH()) + 24 + 36 + 'px';
     st.user = false; st.auto = false; apply();
   };
   const zoom = (f, cx, cy) => {

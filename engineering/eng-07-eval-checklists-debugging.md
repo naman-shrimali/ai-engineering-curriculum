@@ -47,7 +47,7 @@ The curriculum's quality doctrine ([evl-01](../modules/05-evaluation/evl-01-eval
 - [ ] Cases written **before** the feature was built, from the spec ([evl-01](../modules/05-evaluation/evl-01-evaluation-fundamentals.md))
 - [ ] Composition: representative of real traffic + hard tail + abstention cases ([fnd-09](../modules/01-foundations/fnd-09-capabilities-and-limits.md))
 - [ ] Every case has `category` (for slicing), `source` (provenance), `difficulty` ([eng-03](eng-03-eval-harness-architecture.md) data model)
-- [ ] Scoring: cheapest method that captures "good" — programmatic first; judge only with a human-validated checklist rubric ([evl-03](../modules/05-evaluation/evl-03-llm-as-judge.md))
+- [ ] Scoring: cheapest method that captures "good" — programmatic first[^anthropic-evals]; judge only with a human-validated checklist rubric[^husain-evals] ([evl-03](../modules/05-evaluation/evl-03-llm-as-judge.md))
 - [ ] Output designed to be checkable (schema, required citations) so scoring *can* be programmatic ([api-03](../modules/02-llm-apis/api-03-structured-outputs-tool-calling.md))
 - [ ] n-runs configured for anything flaky-adjacent; deltas judged by case-flip arithmetic, never single runs ([fnd-08](../modules/01-foundations/fnd-08-sampling-and-decoding.md))
 - [ ] A held-out partition exists and is excluded from all prompt iteration ([evl-02](../modules/05-evaluation/evl-02-eval-datasets.md))

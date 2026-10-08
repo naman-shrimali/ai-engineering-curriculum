@@ -22,7 +22,7 @@ summary: >-
 difficulty: 2
 est_minutes: 150
 status: evolving
-volatility: high
+volatility: mixed
 last_reviewed: 2026-07-15
 sources:
   - key: nvidia-nemo-guardrails
@@ -43,6 +43,18 @@ sources:
     org: Anthropic
     url: https://docs.anthropic.com/en/docs/test-and-evaluate/strengthen-guardrails
     accessed: 2026-07-15
+  - key: markov-moderation
+    tier: 2
+    title: "A Holistic Approach to Undesired Content Detection in the Real World"
+    org: OpenAI
+    url: https://arxiv.org/abs/2208.03274
+    accessed: 2026-10-08
+  - key: nemo-rail-types
+    tier: 1
+    title: "NeMo Guardrails — Guardrail Types"
+    org: NVIDIA
+    url: https://docs.nvidia.com/nemo/guardrails/0.21.0/about/rail-types.html
+    accessed: 2026-10-08
 ---
 
 # Guardrails
@@ -51,7 +63,7 @@ sources:
 
 ## Intuition: the model is one layer, not the whole system
 
-A model call, by itself, has no memory of policy, no external verification of factual claims, and no guaranteed adherence to instructions under adversarial pressure — all properties this curriculum has established piece by piece ([fnd-09](../01-foundations/fnd-09-known-limitations.md)'s shallows, [sec-01](sec-01-prompt-injection.md)'s injection surface). Guardrails accept this as given and build the missing structure *around* the model rather than expecting the model to provide it internally. The practical consequence: a production system's actual safety and quality posture is the composition of the model's behavior *and* everything checking it — and the checking layer is engineered with the same rigor as any other production component, including its own latency budget and its own failure modes.
+A model call, by itself, has no memory of policy, no external verification of factual claims, and no guaranteed adherence to instructions under adversarial pressure — all properties this curriculum has established piece by piece ([fnd-09](../01-foundations/fnd-09-capabilities-and-limits.md)'s shallows, [sec-01](sec-01-prompt-injection.md)'s injection surface). Guardrails accept this as given and build the missing structure *around* the model rather than expecting the model to provide it internally. The practical consequence: a production system's actual safety and quality posture is the composition of the model's behavior *and* everything checking it — and the checking layer is engineered with the same rigor as any other production component, including its own latency budget and its own failure modes.
 
 ## The guardrail taxonomy
 
@@ -87,7 +99,7 @@ graph LR
 
 ## The latency and cost budget
 
-The point this chapter insists on that a purely conceptual treatment would skip: **every guardrail layer adds latency and cost to every guarded request**, and a naive "add every check to every request" design can double or triple response time for no benefit on the overwhelming majority of requests that were never going to be a problem. The engineering discipline is tiering: cheap, fast, high-recall checks run on everything; expensive, high-precision checks run only on what the cheap layer flags as ambiguous — the same cascade structure [prd-05](../06-production/prd-05-cost-engineering.md) built for cost, applied here to guardrail latency specifically. A production system's guardrail stack should be able to state, for a given request, exactly which checks ran and why, with a defensible latency budget for each.
+The point this chapter insists on that a purely conceptual treatment would skip: **every guardrail layer adds latency and cost to every guarded request**, and a naive "add every check to every request" design can roughly double response time — every request now waits on an extra model call — for no benefit on the overwhelming majority of requests that were never going to be a problem. The engineering discipline is tiering: cheap, fast checks tuned to over-flag run on everything; expensive, high-precision checks run only on what the cheap layer flags as ambiguous. In that cascade, whatever the cheap tier misses never reaches the expensive one, so **the cheap tier's recall is the stack's ceiling** — measure it, and tune it toward false alarms rather than misses (a rule list alone, brittle against anything unanticipated, rarely has that recall; a classifier usually sits beside it). This is the same cascade structure [prd-05](../06-production/prd-05-cost-engineering.md) built for cost, applied here to guardrail latency specifically. A production system's guardrail stack should be able to state, for a given request, exactly which checks ran and why, with a defensible latency budget for each.
 
 ## Guardrails are probabilistic, not a wall
 
@@ -105,7 +117,7 @@ The framing this chapter shares with [sec-01](sec-01-prompt-injection.md): a gua
 
 ## Historical evolution
 
-**2022–2023:** early guardrails are almost entirely rule-based keyword and regex filters, ported directly from earlier-generation content moderation systems, with high false-positive rates on legitimate requests that merely contained a flagged word. **2023:** provider moderation APIs formalize classifier-based content screening as an accessible, purpose-built layer,[^openai-moderation] reducing reliance on brittle keyword lists. **2023:** the NeMo Guardrails toolkit and similar frameworks formalize the input/output/behavioral taxonomy and introduce programmable, composable guardrail flows as a first-class application-layer concept rather than an ad hoc filter bolted onto a chat endpoint.[^nvidia-nemo-guardrails] **2023–2024:** LLM-as-judge guardrails emerge as [evl-03](../05-evaluation/evl-03-llm-as-judge.md)'s offline-evaluation technique gets applied inline, trading latency for flexibility on genuinely ambiguous cases rule-based and classifier layers can't handle. **2024–present:** the field converges on tiered, cost-aware guardrail architectures — cheap checks on everything, expensive checks reserved for flagged ambiguity — as a direct consequence of teams discovering that naive "run every check on every request" designs were unsustainable at production latency and cost budgets.
+**2022–2023:** early guardrails are almost entirely rule-based keyword and regex filters, ported directly from earlier-generation content moderation systems, with high false-positive rates on legitimate requests that merely contained a flagged word. **2022–2023:** provider moderation APIs turn classifier-based content screening into an accessible, purpose-built layer — OpenAI's moderation classifier and endpoint arrive in 2022[^markov-moderation][^openai-moderation] — reducing reliance on brittle keyword lists. **2023:** the NeMo Guardrails toolkit and similar frameworks introduce programmable, composable rails — input, dialog, retrieval, execution and output rails, defined in a dedicated language, Colang — as a first-class application-layer concept rather than an ad hoc filter bolted onto a chat endpoint.[^nvidia-nemo-guardrails][^nemo-rail-types] This chapter's input/output/behavioral grouping is a simpler cut of the same idea. **2023–2024:** LLM-as-judge guardrails emerge as [evl-03](../05-evaluation/evl-03-llm-as-judge.md)'s offline-evaluation technique gets applied inline, trading latency for flexibility on genuinely ambiguous cases rule-based and classifier layers can't handle. **2024–present:** the field converges on tiered, cost-aware guardrail architectures — cheap checks on everything, expensive checks reserved for flagged ambiguity — as a direct consequence of teams discovering that naive "run every check on every request" designs were unsustainable at production latency and cost budgets.
 
 ## Common misconceptions
 
@@ -136,7 +148,7 @@ The framing this chapter shares with [sec-01](sec-01-prompt-injection.md): a gua
 
 ## Real-world examples
 
-**The tiered stack that stayed fast.** A support assistant runs a cheap regex/classifier input check on every request (roughly 5ms), escalating to a full LLM-judge groundedness check only on the ~8% of responses the classifier flags as potentially ungrounded. Median latency stays close to baseline; the expensive check runs where it's actually needed. A team that instead ran the LLM-judge check on every response would have added a full second model call's latency to 100% of traffic for a benefit realized on less than a tenth of it.
+**The tiered stack that stayed fast.** A support assistant runs cheap rule-based input checks on every request and a small groundedness classifier on every response (roughly 5ms each), escalating to a full LLM-judge groundedness check only on the ~8% of responses the classifier flags as potentially ungrounded. Median latency stays close to baseline; the expensive check runs where it's actually needed. A team that instead ran the LLM-judge check on every response would have added a full second model call's latency to 100% of traffic for a benefit realized on less than a tenth of it.
 
 **The fail-open guardrail.** A PII-detection output guardrail occasionally times out under load, and the original implementation passes the response through unchecked on timeout rather than rejecting it — a fail-open default that seemed reasonable during low-traffic testing and became a live PII leak path during a traffic spike. Switching the default to fail-closed (reject and regenerate, or serve a generic fallback, on guardrail timeout) closes the gap at the cost of a small, measured increase in user-facing failure rate during peak load — a trade the team judges clearly correct once the alternative is named explicitly.
 
@@ -166,7 +178,7 @@ The framing this chapter shares with [sec-01](sec-01-prompt-injection.md): a gua
 
 **Mini-project: build a tiered guardrail stack.** On your capstone: (a) implement at least one input guardrail (rule-based or classifier) and one output guardrail; (b) tier at least one of them — a cheap check that escalates to a more expensive check only on ambiguous cases; (c) instrument every guardrail decision (triggered/not, layer, latency) into a log or trace; (d) measure latency added per layer against your baseline response time; (e) run a small red-team suite (reuse [sec-01](sec-01-prompt-injection.md)'s payloads if applicable) and report catch rate alongside false-positive rate on a set of legitimate requests. Target: 3 hours. Success criterion: a guardrail stack with a measured catch rate, a measured false-positive rate, and a measured latency cost — not a stack you merely believe works.
 
-**Capstone extension:** this chapter's architecture generalizes [sec-01](sec-01-prompt-injection.md)'s injection-specific defenses; its cost tiering follows [prd-05](../06-production/prd-05-cost-engineering.md)'s cascade pattern; its fail-closed discipline mirrors [prd-04](../06-production/prd-04-reliability.md)'s reliability posture; and [sec-04](sec-04-red-teaming.md) turns the mini-project's ad hoc testing into a standing measurement practice.
+**Capstone extension:** this chapter's architecture generalizes [sec-01](sec-01-prompt-injection.md)'s injection-specific defenses; its cost tiering follows [prd-05](../06-production/prd-05-cost-engineering.md)'s cascade pattern; its fail-closed choice — block rather than pass when a guardrail itself errors or times out — is a reliability decision to make alongside [prd-04](../06-production/prd-04-reliability.md)'s degraded modes; and [sec-04](sec-04-red-teaming.md) turns the mini-project's ad hoc testing into a standing measurement practice.
 
 ## Revision summary
 
@@ -187,10 +199,12 @@ The framing this chapter shares with [sec-01](sec-01-prompt-injection.md): a gua
 | What's the correct failure default on guardrail error? | Fail closed (reject/degrade) — never silently pass through unchecked. |
 | Why are behavioral guardrails hardest and most skipped? | They need cross-turn state, not just per-call checks — and they catch attacks specifically designed to route around single-turn defenses. |
 | The honest framing of guardrail effectiveness? | Probabilistic risk reduction, measured by catch rate and false-positive rate — never "guaranteed safe." |
+| What goes wrong if every guardrail check runs on every request? | Each layer adds latency and cost to every guarded request; a naive design can roughly double response time for no benefit on most requests. |
+| Why should guardrail rule changes be versioned and eval-gated? | A guardrail rule change is a behavior change with the same regression risk as a prompt or model change, so it is gated the same way. |
 
 ## Further reading
 
-- **Papers:** NeMo Guardrails[^nvidia-nemo-guardrails] — the toolkit that formalized the input/output/behavioral taxonomy as programmable flows.
+- **Papers:** NeMo Guardrails[^nvidia-nemo-guardrails] — the toolkit that popularized programmable rails (its docs list the five rail types[^nemo-rail-types]); Markov et al.[^markov-moderation] — how a production moderation classifier is actually built: taxonomy, data quality, active learning for rare cases.
 - **Official docs:** OpenAI's Moderation API[^openai-moderation] and Anthropic's guardrail-strengthening guide[^anthropic-guardrails] — concrete, current implementation references.
 - **Tutorials:** build the mini-project's tiered cascade before reading further frameworks — the latency-budget trade-off is best understood by measuring it on your own system.
 
@@ -207,3 +221,5 @@ The framing this chapter shares with [sec-01](sec-01-prompt-injection.md): a gua
 [^nvidia-nemo-guardrails]: [T2] Rebedea et al. (2023). "NeMo Guardrails: A Toolkit for Controllable and Safe LLM Applications." arXiv:2310.10501. https://arxiv.org/abs/2310.10501 (accessed 2026-07-15)
 [^openai-moderation]: [T1] OpenAI. "Moderation." https://platform.openai.com/docs/guides/moderation (accessed 2026-07-15)
 [^anthropic-guardrails]: [T1] Anthropic. "Increase output consistency and reduce harmful outputs." https://docs.anthropic.com/en/docs/test-and-evaluate/strengthen-guardrails (accessed 2026-07-15)
+[^markov-moderation]: [T2] Markov et al. (2022). "A Holistic Approach to Undesired Content Detection in the Real World." OpenAI; AAAI 2023. arXiv:2208.03274. https://arxiv.org/abs/2208.03274 (accessed 2026-10-08)
+[^nemo-rail-types]: [T1] NVIDIA. "Guardrail Types." NeMo Guardrails documentation (v0.21.0). https://docs.nvidia.com/nemo/guardrails/0.21.0/about/rail-types.html (accessed 2026-10-08)

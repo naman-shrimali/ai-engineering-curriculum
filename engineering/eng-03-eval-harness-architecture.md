@@ -104,7 +104,7 @@ Non-negotiable fields, per evl-01's pathologies: `held_out` (defends against eva
 |---|---|---|
 | Case store | Versioned cases, held-out partitioning, lifecycle | Cases in git (diffable, reviewed); held-out set access-controlled by convention and tooling |
 | Runner | Execution against the real system; n-runs; concurrency | Batch API by default ([api-05](../modules/02-llm-apis/api-05-streaming-caching-batch.md) — half price, no quota contention); config snapshot recorded per run |
-| Scorer registry | Programmatic, statistical, and judge scorers as pluggable units | Preference order per evl-01: programmatic → statistical → judge → human; every judge scorer carries a calibration record |
+| Scorer registry | Programmatic, statistical, and judge scorers as pluggable units | Preference order per evl-01: programmatic → statistical → judge → human[^anthropic-evals][^openai-evals]; every judge scorer carries a calibration record |
 | Baseline store | Score history keyed by (suite, system-config hash) | Every result is a diff; a score without a baseline is trivia |
 | Reporter | Aggregate + per-category slices + spread + case-level failure links | The four-part format (evl-01); failures link to full traces (evl-04) |
 | CI integration | Suite tiers mapped to triggers; gate policy | [evl-06](../modules/05-evaluation/evl-06-ci-for-llm-apps.md)'s subject; the tier table below |

@@ -9,10 +9,10 @@ keywords:
   - hyperparameter search
   - training curves
   - overfitting detection
-  - hosted fine-tuning APIs
+  - hosted fine-tuning apis
   - self-hosted training
   - checkpoint evaluation
-  - fine-tuning CI
+  - fine-tuning ci
 summary: >-
   The end-to-end workflow that turns a method (ftn-02) and a dataset (ftn-03)
   into a deployed, evaluated model. Covers hosted-API versus self-hosted
@@ -22,7 +22,7 @@ summary: >-
 difficulty: 3
 est_minutes: 165
 status: evolving
-volatility: high
+volatility: volatile
 last_reviewed: 2026-07-22
 sources:
   - key: openai-finetuning-guide
@@ -32,17 +32,29 @@ sources:
     url: https://platform.openai.com/docs/guides/fine-tuning
     accessed: 2026-07-22
   - key: anthropic-finetuning
-    tier: 1
-    title: "Fine-tuning"
+    tier: 4
+    title: "Fine-tune Claude 3 Haiku in Amazon Bedrock"
     org: Anthropic
-    url: https://docs.anthropic.com/en/docs/build-with-claude/fine-tuning
-    accessed: 2026-07-22
+    url: https://www.anthropic.com/news/fine-tune-claude-3-haiku
+    accessed: 2026-10-08
   - key: huggingface-peft
     tier: 1
     title: "PEFT: Parameter-Efficient Fine-Tuning"
     org: Hugging Face
     url: https://huggingface.co/docs/peft/index
     accessed: 2026-07-22
+  - key: hf-chat-templates
+    tier: 1
+    title: "Chat templates"
+    org: Hugging Face Transformers
+    url: https://huggingface.co/docs/transformers/en/chat_templating
+    accessed: 2026-10-08
+  - key: qi-finetune-safety
+    tier: 2
+    title: "Fine-tuning Aligned Language Models Compromises Safety, Even When Users Do Not Intend To!"
+    org: Princeton University et al.
+    url: https://arxiv.org/abs/2310.03693
+    accessed: 2026-10-08
 ---
 
 # Fine-Tuning in Practice
@@ -57,9 +69,17 @@ Everything in this chapter is standard ML training practice — loss curves, ove
 
 **Hosted fine-tuning APIs** (provider-managed fine-tuning endpoints) handle infrastructure, training orchestration, and often hyperparameter defaults for you — upload a formatted dataset, kick off a job, get back a deployable fine-tuned model endpoint.[^openai-finetuning-guide][^anthropic-finetuning] This is the right default for most teams: it removes GPU provisioning, distributed training setup, and infrastructure maintenance entirely, at the cost of less control over the exact training process and, typically, an inability to export and self-host the resulting weights (the fine-tuned model lives on the provider's infrastructure, accessed via API like the base model was).
 
-**Self-hosted training** (typically via open-weight models and frameworks like Hugging Face's PEFT library[^huggingface-peft]) trades that convenience for full control — exact hyperparameters, custom training loops, the ability to export and deploy the resulting weights anywhere, including [prd-01](../06-production/prd-01-architecture-patterns.md)'s self-hosted deployment path. This is the right choice when you need an open-weight base model specifically (for licensing, data-residency, or cost-at-scale reasons connecting back to [sec-03](../07-safety-security/sec-03-privacy-compliance.md) and [prd-05](../06-production/prd-05-cost-engineering.md)), or when your task genuinely needs hyperparameter or architecture control a hosted API doesn't expose.
+**Self-hosted training** (typically via open-weight models and frameworks like Hugging Face's PEFT library[^huggingface-peft]) trades that convenience for full control — exact hyperparameters, custom training loops, the ability to export and deploy the resulting weights anywhere, including your own serving stack ([api-07](../02-llm-apis/api-07-local-inference.md), [prd-06](../06-production/prd-06-deployment-infrastructure.md)). This is the right choice when you need an open-weight base model specifically (for licensing, data-residency, or cost-at-scale reasons connecting back to [sec-03](../07-safety-security/sec-03-privacy-compliance.md) and [prd-05](../06-production/prd-05-cost-engineering.md)), or when your task genuinely needs hyperparameter or architecture control a hosted API doesn't expose.
 
-**The decision follows the same build-vs-buy logic [prd-01](../06-production/prd-01-architecture-patterns.md) established generally**: hosted APIs for speed and low operational overhead when a supported base model and standard training recipe fit the task; self-hosted training when control, data residency, licensing, or cost-at-scale considerations outweigh that convenience — evaluated per project, not as a standing default in either direction.
+**The decision follows the same buy-versus-own logic [api-07](../02-llm-apis/api-07-local-inference.md) applies to inference** — including its warning that owning the infrastructure is a product you build for yourself: hosted APIs for speed and low operational overhead when a supported base model and standard training recipe fit the task; self-hosted training when control, data residency, licensing, or cost-at-scale considerations outweigh that convenience — evaluated per project, not as a standing default in either direction.
+
+## Formatting the data: chat templates and loss masking
+
+Two details decide whether a fine-tuning run teaches what you meant, and both fail silently.
+
+**Serialize examples with the model's own chat template.** A chat model learned its conversation structure — role markers, special tokens, where an assistant turn ends — during post-training ([fnd-07](../01-foundations/fnd-07-post-training.md)). Fine-tuning data must be serialized with that same template, or every example teaches a slightly foreign format. Hosted APIs do this for you from a list of role-tagged messages. Self-hosted, you apply the template yourself — Hugging Face tokenizers ship it, applied with `apply_chat_template` — and you watch for doubled special tokens when templated text is tokenized again.[^hf-chat-templates] Decode the token sequence of one training example and read it before you train.
+
+**Mask the loss to the assistant's tokens.** The objective should count only the tokens the model is meant to produce — the assistant turns — not the system prompt or the user's messages ([fnd-07](../01-foundations/fnd-07-post-training.md)). Train on everything and the model also learns to imitate users and to regenerate prompts, spending capacity on text it will never need to write. Most training libraries support assistant-only or completion-only loss, but it is not always the default; inspect the labels of one batch (masked positions carry an ignore value, -100 in Hugging Face's convention) before the run. A wrong mask doesn't crash anything — the loss curves look normal — which is why it is a classic gotcha.
 
 ## Reading training curves
 
@@ -90,7 +110,7 @@ graph LR
 
 ## Wiring fine-tuning into CI
 
-The step that closes the loop with the rest of this curriculum's production discipline: **a fine-tuned model is a deployable artifact, and it should go through the same eval-gated pipeline [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md) built for any other model or prompt change** — automated evaluation against the standing suite before any fine-tuned checkpoint is considered for deployment, version-pinned and canaried per [prd-06](../06-production/prd-06-deployment-infrastructure.md)'s deployment discipline rather than swapped in directly, and red-teamed per [sec-04](../07-safety-security/sec-04-red-teaming.md)'s standing practice before shipping if the fine-tuning changed behavior in ways that could affect safety properties.
+The step that closes the loop with the rest of this curriculum's production discipline: **a fine-tuned model is a deployable artifact, and it should go through the same eval-gated pipeline [evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md) built for any other model or prompt change** — automated evaluation against the standing suite before any fine-tuned checkpoint is considered for deployment, version-pinned and canaried per [prd-06](../06-production/prd-06-deployment-infrastructure.md)'s deployment discipline rather than swapped in directly, and red-teamed per [sec-04](../07-safety-security/sec-04-red-teaming.md)'s standing practice before shipping. Make the safety and red-team subset part of every post-tune eval, not a judgment call: fine-tuning on entirely benign task data has been shown to erode a model's safety behavior ([ftn-03](ftn-03-data-for-fine-tuning.md)).[^qi-finetune-safety]
 
 **This is the discipline most commonly skipped**, because fine-tuning can feel like a separate, one-off ML project rather than a production deployment — but a fine-tuned model is exactly as capable of shipping a regression as a prompt change, and treating it with less rigor than a prompt change (which, by this point in the curriculum, goes through a full eval gate) is an inconsistency worth deliberately closing rather than accepting as a natural artifact of fine-tuning feeling like a different kind of work.
 
@@ -105,7 +125,7 @@ The step that closes the loop with the rest of this curriculum's production disc
 
 ## Historical evolution
 
-**2021–2022:** early fine-tuning practice is largely self-hosted and research-lab-driven, requiring substantial ML engineering expertise to run training loops, manage infrastructure, and interpret results — a high barrier to entry that limited fine-tuning to teams with dedicated ML infrastructure. **2023:** hosted fine-tuning APIs from major providers dramatically lower this barrier, packaging dataset upload, training orchestration, and often reasonable hyperparameter defaults into a managed service accessible to application engineers without deep ML training expertise.[^openai-finetuning-guide][^anthropic-finetuning] **2023:** as LoRA and PEFT libraries mature and stabilize,[^huggingface-peft] self-hosted fine-tuning becomes substantially more accessible too — a well-documented, widely-used library rather than a research codebase, narrowing the gap between hosted convenience and self-hosted control. **2023–2024:** the practice of evaluating fine-tuned models with the same eval-gated CI rigor as prompt and model changes ([evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)) spreads as teams discover that treating fine-tuning as a separate, less-rigorous workflow produced exactly the regressions the CI discipline was built to catch elsewhere. **2024–present:** fine-tuning workflow has largely converged on the pattern this chapter describes — hosted-by-default, validation-loss-monitored, multi-checkpoint-evaluated, CI-gated before deployment — as the field's default rather than a leading-edge practice only sophisticated teams follow.
+**2021–2022:** fine-tuning practice is largely self-hosted and research-lab-driven, requiring substantial ML engineering expertise to run training loops, manage infrastructure, and interpret results — a high barrier to entry. Hosted fine-tuning exists (OpenAI opens fine-tuning of its GPT-3 models through its API by the end of 2021) but on older-generation models. **2023–2024:** hosted fine-tuning of current chat models arrives — OpenAI's GPT-3.5 Turbo in August 2023, Claude 3 Haiku through Amazon Bedrock in 2024 — packaging dataset upload, training orchestration, and reasonable hyperparameter defaults into a managed service accessible to application engineers without deep ML training expertise.[^openai-finetuning-guide][^anthropic-finetuning] **2023:** as LoRA and PEFT libraries mature and stabilize,[^huggingface-peft] self-hosted fine-tuning becomes substantially more accessible too — a well-documented, widely-used library rather than a research codebase, narrowing the gap between hosted convenience and self-hosted control. **2023–2024:** the practice of evaluating fine-tuned models with the same eval-gated CI rigor as prompt and model changes ([evl-06](../05-evaluation/evl-06-ci-for-llm-apps.md)) spreads as teams discover that treating fine-tuning as a separate, less-rigorous workflow produced exactly the regressions the CI discipline was built to catch elsewhere. **2024–present:** fine-tuning workflow has largely converged on the pattern this chapter describes — hosted-by-default, validation-loss-monitored, multi-checkpoint-evaluated, CI-gated before deployment — as the field's default rather than a leading-edge practice only sophisticated teams follow.
 
 ## Common misconceptions
 
@@ -126,6 +146,7 @@ The step that closes the loop with the rest of this curriculum's production disc
 ## Best practices
 
 - Default to hosted fine-tuning APIs; choose self-hosted training only for an identified, specific requirement.
+- Serialize training data with the model's own chat template and mask the loss to assistant tokens; inspect one example and one batch of labels before every run.
 - Hold out a validation split from the start and monitor validation loss throughout training, not just training loss.
 - Save and evaluate multiple checkpoints against the actual target-task eval suite, not just the final checkpoint or loss alone.
 - Check every candidate checkpoint for catastrophic forgetting against a general-capability suite as part of checkpoint selection.
@@ -139,7 +160,7 @@ The step that closes the loop with the rest of this curriculum's production disc
 
 **The fine-tuning project that skipped CI and shipped a regression.** A team treats their fine-tuning project as a standalone ML effort, evaluating it only against their target-task metrics before deploying the resulting model directly, bypassing the eval-gated CI pipeline every other model and prompt change in their system goes through. The fine-tuned model performs well on the target task but has quietly regressed on an unrelated capability the standing eval suite would have caught — a regression that ships to production and is discovered days later through user reports rather than caught before deployment, prompting the team to fold fine-tuned models into the same CI gate going forward.
 
-**The hosted-versus-self-hosted decision made explicitly.** A team initially assumes they need self-hosted training for maximum control, provisioning GPU infrastructure and a custom training pipeline. Revisiting the decision against [prd-01](../06-production/prd-01-architecture-patterns.md)'s build-vs-buy framework, they realize their task — a standard structured-output formatting adaptation — fits a hosted API's standard training recipe well, with no specific data-residency or licensing requirement pushing toward self-hosting. Switching to a hosted API cuts their time-to-first-result from weeks to days, with comparable final quality on their eval suite — the self-hosted infrastructure had been solving a control problem they didn't actually have.
+**The hosted-versus-self-hosted decision made explicitly.** A team initially assumes they need self-hosted training for maximum control, provisioning GPU infrastructure and a custom training pipeline. Revisiting the decision with the buy-versus-own reasoning [api-07](../02-llm-apis/api-07-local-inference.md) applies to inference, they realize their task — a standard structured-output formatting adaptation — fits a hosted API's standard training recipe well, with no specific data-residency or licensing requirement pushing toward self-hosting. Switching to a hosted API cuts their time-to-first-result from weeks to days, with comparable final quality on their eval suite — the self-hosted infrastructure had been solving a control problem they didn't actually have.
 
 ## Interview questions
 
@@ -169,7 +190,8 @@ The step that closes the loop with the rest of this curriculum's production disc
 
 ## Revision summary
 
-- **Hosted fine-tuning APIs** are the right default (low operational overhead, sensible defaults); **self-hosted training** is justified by a specific requirement (data residency, licensing, open-weight deployment, deep hyperparameter control) — the same build-vs-buy logic as [prd-01](../06-production/prd-01-architecture-patterns.md).
+- **Hosted fine-tuning APIs** are the right default (low operational overhead, sensible defaults); **self-hosted training** is justified by a specific requirement (data residency, licensing, open-weight deployment, deep hyperparameter control) — the same buy-versus-own logic [api-07](../02-llm-apis/api-07-local-inference.md) applies to inference.
+- **Format and mask before you train:** serialize with the model's own chat template and compute loss on assistant tokens only — both fail silently.
 - **Validation loss, not just training loss**, is the non-negotiable signal for overfitting — fine-tuning's small dataset size makes this failure mode arrive faster than large-scale training intuition suggests.
 - **Loss is a proxy, not the target** — the real signal is the target-task eval suite run against multiple saved checkpoints, since the best checkpoint is frequently not the final one.
 - **Checkpoint selection weighs target-task gain against catastrophic forgetting explicitly**, reusing [ftn-02](ftn-02-fine-tuning-methods.md)'s forgetting-detection discipline at the selection stage.
@@ -186,15 +208,17 @@ The step that closes the loop with the rest of this curriculum's production disc
 | How should checkpoints be chosen? | Evaluate multiple saved checkpoints against the target-task eval suite; the best is often not the final one. |
 | What must happen before a fine-tuned model deploys? | The same eval-gated CI check, canary process, and red-teaming as any other model/prompt change. |
 | The chapter's central failure mode to avoid? | Treating fine-tuning as a separate, less-rigorous ML project instead of a normal production deployment. |
+| How do you choose between a checkpoint with the best target-task score and one with less general-capability drift? | It is an explicit trade-off, not an automatic win: evaluate every candidate on both suites and weigh target-task gain against general-capability cost. |
+| What do you give up by using a hosted fine-tuning API? | Control over the exact training process and, typically, the ability to export and self-host the weights, since the fine-tuned model lives on the provider's infrastructure. |
 
 ## Further reading
 
-- **Official docs:** OpenAI's[^openai-finetuning-guide] and Anthropic's[^anthropic-finetuning] fine-tuning guides, and Hugging Face's PEFT documentation[^huggingface-peft] — the concrete hosted and self-hosted workflows this chapter's decision framework assumes you'll check directly.
+- **Official docs:** OpenAI's fine-tuning guide[^openai-finetuning-guide], Anthropic's Claude 3 Haiku fine-tuning announcement[^anthropic-finetuning], Hugging Face's PEFT documentation[^huggingface-peft] and its chat-templates guide[^hf-chat-templates] — the concrete hosted and self-hosted workflows this chapter's decision framework assumes you'll check directly.
 - **Tutorials:** run the mini-project's full cycle — training, checkpoint evaluation, selection, deployment memo — before your next real fine-tuning project; the overfitting signature and the "final checkpoint isn't always best" finding are far more convincing measured on your own run than read about.
 
 ## Check your understanding
 
-1. Explain the hosted-versus-self-hosted fine-tuning decision using the same framework as prd-01's build-vs-buy logic.
+1. Explain the hosted-versus-self-hosted fine-tuning decision using the same buy-versus-own framework api-07 applies to inference.
 2. Walk through how you'd detect overfitting during a fine-tuning run and what action you'd take.
 3. Explain why checkpoint selection needs the target-task eval suite, not just the loss curve.
 4. Design the trade-off analysis for choosing between two checkpoints with different target-task and forgetting profiles.
@@ -203,5 +227,7 @@ The step that closes the loop with the rest of this curriculum's production disc
 ## Sources
 
 [^openai-finetuning-guide]: [T1] OpenAI. "Fine-tuning." https://platform.openai.com/docs/guides/fine-tuning (accessed 2026-07-22)
-[^anthropic-finetuning]: [T1] Anthropic. "Fine-tuning." https://docs.anthropic.com/en/docs/build-with-claude/fine-tuning (accessed 2026-07-22)
+[^anthropic-finetuning]: [T4] Anthropic (2024). "Fine-tune Claude 3 Haiku in Amazon Bedrock." https://www.anthropic.com/news/fine-tune-claude-3-haiku (accessed 2026-10-08)
 [^huggingface-peft]: [T1] Hugging Face. "PEFT: Parameter-Efficient Fine-Tuning." https://huggingface.co/docs/peft/index (accessed 2026-07-22)
+[^hf-chat-templates]: [T1] Hugging Face. "Chat templates." Transformers documentation. https://huggingface.co/docs/transformers/en/chat_templating (accessed 2026-10-08)
+[^qi-finetune-safety]: [T2] Qi et al. (2023). "Fine-tuning Aligned Language Models Compromises Safety, Even When Users Do Not Intend To!" ICLR 2024. arXiv:2310.03693. https://arxiv.org/abs/2310.03693 (accessed 2026-10-08)

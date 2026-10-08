@@ -23,17 +23,17 @@ summary: >-
 difficulty: 3
 est_minutes: 165
 status: evolving
-volatility: high
+volatility: mixed
 last_reviewed: 2026-07-21
 sources:
   - key: zhou-lima
-    tier: 1
+    tier: 2
     title: "LIMA: Less Is More for Alignment"
     org: arXiv
     url: https://arxiv.org/abs/2305.11206
     accessed: 2026-07-21
   - key: wang-selfinstruct
-    tier: 1
+    tier: 2
     title: "Self-Instruct: Aligning Language Models with Self-Generated Instructions"
     org: arXiv
     url: https://arxiv.org/abs/2212.10560
@@ -44,15 +44,21 @@ sources:
     org: arXiv
     url: https://arxiv.org/abs/2107.06499
     accessed: 2026-07-21
+  - key: qi-finetune-safety
+    tier: 2
+    title: "Fine-tuning Aligned Language Models Compromises Safety, Even When Users Do Not Intend To!"
+    org: Princeton University et al.
+    url: https://arxiv.org/abs/2310.03693
+    accessed: 2026-10-08
 ---
 
 # Data for Fine-Tuning
 
-[ftn-01](ftn-01-customization-decision.md) flagged data collection as the largest, most consistently underestimated cost in a fine-tuning project. This chapter is why: the dataset isn't a supporting artifact for fine-tuning, it *is* the fine-tuning project in most of the ways that determine success — the training method from [ftn-02](ftn-02-fine-tuning-methods.md) is close to fixed once you've chosen it, but dataset quality is where nearly all of the remaining variance in outcome actually lives. The central, counterintuitive finding this chapter builds around is that a small, carefully curated dataset routinely outperforms a much larger, noisier one — directly extending [evl-02](../05-evaluation/evl-02-eval-datasets.md)'s quality-over-quantity discipline from evaluation data into training data.
+[ftn-01](ftn-01-customization-decision.md) flagged data collection as the largest, most consistently underestimated cost in a fine-tuning project. This chapter is why: the dataset isn't a supporting artifact for fine-tuning, it *is* the fine-tuning project in most of the ways that determine success — the training method from [ftn-02](ftn-02-fine-tuning-methods.md) is close to fixed once you've chosen it, but dataset quality is where nearly all of the remaining variance in outcome actually lives. The central, counterintuitive finding this chapter builds around is that a small, carefully curated dataset routinely outperforms a much larger, noisier one — echoing [evl-02](../05-evaluation/evl-02-eval-datasets.md)'s emphasis on curated, representative cases over raw volume, now applied to training data.
 
 ## Intuition: fine-tuning data teaches format and behavior, not facts
 
-[ftn-02](ftn-02-fine-tuning-methods.md) established that fine-tuning is a behavior-shaping tool. That reframes what "good training data" means here: a fine-tuning example isn't primarily teaching the model a fact, it's demonstrating *the exact pattern of behavior you want reproduced* — the format, the tone, the reasoning structure, the way a task should be handled end to end. **Every example in the dataset is, in effect, a worked demonstration the model will learn to imitate the statistical pattern of** — which means an example with a subtly wrong format, an inconsistent tone, or a lazy answer teaches exactly that subtlety, at whatever scale it appears in the dataset. This is why data quality dominates: a thousand excellent, consistent demonstrations shape behavior far more reliably than ten thousand demonstrations with even a modest fraction of inconsistency mixed in.
+[ftn-01](ftn-01-customization-decision.md) established that fine-tuning is a behavior-shaping tool. That reframes what "good training data" means here: a fine-tuning example isn't primarily teaching the model a fact, it's demonstrating *the exact pattern of behavior you want reproduced* — the format, the tone, the reasoning structure, the way a task should be handled end to end. **Every example in the dataset is, in effect, a worked demonstration the model will learn to imitate the statistical pattern of** — which means an example with a subtly wrong format, an inconsistent tone, or a lazy answer teaches exactly that subtlety, at whatever scale it appears in the dataset. This is why data quality dominates: a thousand excellent, consistent demonstrations shape behavior far more reliably than ten thousand demonstrations with even a modest fraction of inconsistency mixed in.
 
 ## The quality-over-quantity finding
 
@@ -70,7 +76,7 @@ The **LIMA** study demonstrated something that reshaped fine-tuning data practic
 
 ## Data hygiene: deduplication and contamination
 
-**Deduplication** — removing exact and near-exact duplicate examples from the training set — matters more than it initially sounds like it should, because duplicated examples don't just waste training compute, they effectively over-weight whatever pattern they contain relative to the rest of the dataset, distorting the learned distribution toward the duplicated content's specific characteristics.[^lee-dedup] This applies with particular force to synthetic data, since generation processes can produce near-duplicate examples (same underlying pattern, superficially varied wording) at a much higher rate than careful human authoring would.
+**Deduplication** — removing exact and near-exact duplicate examples from the training set — matters more than it initially sounds like it should, because duplicated examples don't just waste training compute, they effectively over-weight whatever pattern they contain relative to the rest of the dataset. The evidence comes from pretraining corpora, where deduplicated data made models emit memorized text far less often and exposed training-test overlap that duplicate-laden datasets had hidden;[^lee-dedup] in a small fine-tuning set the same mechanism operates at a much larger relative scale, so one pattern repeated fifty times can dominate what the model learns. This applies with particular force to synthetic data, since generation processes can produce near-duplicate examples (same underlying pattern, superficially varied wording) at a much higher rate than careful human authoring would.
 
 **Train-eval contamination** is the failure mode that silently invalidates results rather than merely degrading them: if any example in the training set overlaps, even partially, with the evaluation set used to measure the fine-tuned model's performance, the resulting eval score is inflated and doesn't reflect genuine generalization — the model may simply be reproducing something close to memorized training content rather than demonstrating the target behavior on genuinely unseen inputs. This is the fine-tuning-specific instance of a discipline [evl-02](../05-evaluation/evl-02-eval-datasets.md) already established generally: **eval data must be held out and verified clean before training starts**, checked explicitly for overlap (exact match and near-duplicate/paraphrase match, not just exact string match) rather than assumed clean because the two datasets were built separately.
 
@@ -84,6 +90,8 @@ graph TD
   D --> E[Final training set]
   F[Held-out eval set<br/>from evl-02] -.never mixed into training.-> C
 ```
+
+**Keep the safety behavior in the mixture.** Fine-tuning on entirely benign task data can erode a model's safety training: in one controlled study, tuning both a hosted model and an open chat model on ordinary instruction datasets measurably raised how often they complied with harmful requests, with nobody intending it.[^qi-finetune-safety] The data-side defense is to include examples of the refusals and safety behavior you need to keep, alongside the task examples ([fnd-07](../01-foundations/fnd-07-post-training.md)). It reduces the erosion rather than guaranteeing it away, which is why [ftn-04](ftn-04-fine-tuning-in-practice.md) re-runs safety evals after every tune.
 
 ## Annotation guidelines: the discipline that determines dataset quality
 
@@ -130,6 +138,7 @@ Without this, a dataset assembled from multiple contributors (human or synthetic
 - Verify train-eval separation with an explicit overlap check before every training run, not an assumption based on independent construction.
 - Manually spot-review the final training set before committing training compute.
 - Version the dataset alongside the model artifact for reproducibility and debugging.
+- Include examples of the safety behavior you need to preserve (refusals, policy-compliant handling) in the training mix, and re-run safety evals after training.
 
 ## Real-world examples
 
@@ -184,6 +193,8 @@ Without this, a dataset assembled from multiple contributors (human or synthetic
 | Why does deduplication matter beyond compute savings? | Duplicates over-weight their pattern, distorting the learned distribution. |
 | Why must train-eval overlap checks include near-duplicates? | Paraphrased contamination inflates eval scores without being caught by exact-match checks alone. |
 | What determines whether a dataset is consistently good, not just large? | Written, calibrated annotation guidelines applied before full-scale collection. |
+| How should synthetic fine-tuning data be handled? | As a first draft needing human review and filtering: diversify generation prompts and sampling temperature, and mix with human-authored examples rather than relying on it exclusively. |
+| Why can adding more fine-tuning examples hurt? | Past a point, lower-quality additions dilute the consistency of the demonstrated pattern, giving diminishing or even negative returns. |
 
 ## Further reading
 
@@ -201,6 +212,7 @@ Without this, a dataset assembled from multiple contributors (human or synthetic
 
 ## Sources
 
-[^zhou-lima]: [T1] Zhou et al. (2023). "LIMA: Less Is More for Alignment." arXiv:2305.11206. https://arxiv.org/abs/2305.11206 (accessed 2026-07-21)
-[^wang-selfinstruct]: [T1] Wang et al. (2022). "Self-Instruct: Aligning Language Models with Self-Generated Instructions." arXiv:2212.10560. https://arxiv.org/abs/2212.10560 (accessed 2026-07-21)
+[^zhou-lima]: [T2] Zhou et al. (2023). "LIMA: Less Is More for Alignment." arXiv:2305.11206. https://arxiv.org/abs/2305.11206 (accessed 2026-07-21)
+[^wang-selfinstruct]: [T2] Wang et al. (2022). "Self-Instruct: Aligning Language Models with Self-Generated Instructions." arXiv:2212.10560. https://arxiv.org/abs/2212.10560 (accessed 2026-07-21)
 [^lee-dedup]: [T2] Lee et al. (2021). "Deduplicating Training Data Makes Language Models Better." arXiv:2107.06499. https://arxiv.org/abs/2107.06499 (accessed 2026-07-21)
+[^qi-finetune-safety]: [T2] Qi et al. (2023). "Fine-tuning Aligned Language Models Compromises Safety, Even When Users Do Not Intend To!" ICLR 2024. arXiv:2310.03693. https://arxiv.org/abs/2310.03693 (accessed 2026-10-08)

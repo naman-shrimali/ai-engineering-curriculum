@@ -22,11 +22,10 @@ tutor_docs are only checked for existence (METADATA_SCHEMA.md's rules are
 scoped to modules/ + engineering/; tutor/ is a derived/compiled layer per
 CONVENTIONS.md and its ids don't match the id regex in rule 1).
 
-Known pre-existing violations in the corpus (found the first time this script
-was run) are reported under "pre-existing (warning)" instead of "error", so CI
-stays green while a human decides what to do with them. Nothing here is
-weakened for *new* files: any violation not in BASELINE below still fails the
-build. See the bottom of this file for the exact entries and why.
+The BASELINE mechanism (bottom of this file) can park known pre-existing
+violations as warnings while a human decides what to do with them. It is
+currently empty: every violation found when this script was first run has been
+fixed in the content, so any violation now fails the build.
 
 This script never writes to any file. It only reads.
 
@@ -54,6 +53,7 @@ FRONTMATTER_RE = re.compile(r"^---\n(.*?\n)---\n(.*)$", re.S)
 H1_RE = re.compile(r"^#\s+(.+?)\s*$", re.M)
 FOOTNOTE_DEF_RE = re.compile(r"(?m)^\[\^([A-Za-z0-9_-]+)\]:")
 FOOTNOTE_REF_RE = re.compile(r"\[\^([A-Za-z0-9_-]+)\](?!:)")
+FOOTNOTE_TIER_RE = re.compile(r"(?m)^\[\^([A-Za-z0-9_-]+)\]:\s*\[T(\d)")
 MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 
 CADENCE_DAYS = {"evergreen": 365, "mixed": 182, "volatile": 91}
@@ -261,6 +261,14 @@ def check_rule5(fm, body, filepath, report):
     # CONVENTIONS §5 says the frontmatter list mirrors the footnote definitions.
     for k in sorted(def_keys - source_keys):
         raise_violation(report, "rule5", fp, f"footnote definition '[^{k}]:' has no matching sources[].key")
+    for k in sorted(source_keys - def_keys):
+        raise_violation(report, "rule5", fp, f"sources[].key '{k}' has no footnote definition under ## Sources")
+
+    # The [T#] tag on each definition must match the frontmatter tier.
+    tiers = {s["key"]: s.get("tier") for s in sources if isinstance(s, dict) and "key" in s}
+    for k, t in FOOTNOTE_TIER_RE.findall(body):
+        if k in tiers and tiers[k] is not None and str(tiers[k]) != t:
+            raise_violation(report, "rule5", fp, f"footnote '[^{k}]' is tagged [T{t}] but frontmatter says tier {tiers[k]}")
 
 
 def check_rule7(fm, filepath, report):
@@ -406,73 +414,7 @@ def print_report(report, n_validated, n_tutor):
 # and either fix the content or decide it's fine, then remove the entry here.
 #
 # Format: (rule, file-relative-to-repo-root, message-prefix-to-match)
-BASELINE = [
-    ('rule7', 'modules/06-production/prd-05-cost-engineering.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('links', 'modules/06-production/prd-05-cost-engineering.md', "broken link target '../03-retrieval/rag-04-chunking-strategies.md' -> resolves to 'modules/03-retrieval/rag-04-chunking-strategies.md' which does not exist"),
-    ('rule4', 'modules/06-production/prd-06-deployment-infrastructure.md', "keyword 'CI/CD for LLM apps' is not lowercase"),
-    ('rule7', 'modules/07-safety-security/sec-01-prompt-injection.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('links', 'modules/07-safety-security/sec-01-prompt-injection.md', "broken link target '../01-foundations/fnd-01-what-is-an-llm.md' -> resolves to 'modules/01-foundations/fnd-01-what-is-an-llm.md' which does not exist"),
-    ('rule7', 'modules/07-safety-security/sec-02-guardrails.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('links', 'modules/07-safety-security/sec-02-guardrails.md', "broken link target '../01-foundations/fnd-09-known-limitations.md' -> resolves to 'modules/01-foundations/fnd-09-known-limitations.md' which does not exist"),
-    ('rule4', 'modules/07-safety-security/sec-03-privacy-compliance.md', "keyword 'PII handling' is not lowercase"),
-    ('rule4', 'modules/07-safety-security/sec-03-privacy-compliance.md', "keyword 'GDPR' is not lowercase"),
-    ('rule7', 'modules/07-safety-security/sec-03-privacy-compliance.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('links', 'modules/07-safety-security/sec-03-privacy-compliance.md', "broken link target '../03-retrieval/rag-04-chunking-strategies.md' -> resolves to 'modules/03-retrieval/rag-04-chunking-strategies.md' which does not exist"),
-    ('rule7', 'modules/07-safety-security/sec-04-red-teaming.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('rule4', 'modules/07-safety-security/sec-05-alignment-for-engineers.md', "keyword 'RLHF' is not lowercase"),
-    ('rule4', 'modules/07-safety-security/sec-05-alignment-for-engineers.md', "keyword 'Constitutional AI' is not lowercase"),
-    ('rule7', 'modules/07-safety-security/sec-05-alignment-for-engineers.md', "volatility 'low' is not evergreen/mixed/volatile"),
-    ('links', 'modules/07-safety-security/sec-05-alignment-for-engineers.md', "broken link target '../01-foundations/fnd-09-known-limitations.md' -> resolves to 'modules/01-foundations/fnd-09-known-limitations.md' which does not exist"),
-    ('links', 'modules/07-safety-security/sec-05-alignment-for-engineers.md', "broken link target '../05-evaluation/evl-01-eval-fundamentals.md' -> resolves to 'modules/05-evaluation/evl-01-eval-fundamentals.md' which does not exist"),
-    ('rule4', 'modules/08-fine-tuning/ftn-01-customization-decision.md', "keyword 'RAG versus fine-tuning' is not lowercase"),
-    ('rule7', 'modules/08-fine-tuning/ftn-01-customization-decision.md', "volatility 'medium' is not evergreen/mixed/volatile"),
-    ('links', 'modules/08-fine-tuning/ftn-01-customization-decision.md', "broken link target '../02-llm-apis/api-02-prompting-fundamentals.md' -> resolves to 'modules/02-llm-apis/api-02-prompting-fundamentals.md' which does not exist"),
-    ('links', 'modules/08-fine-tuning/ftn-01-customization-decision.md', "broken link target '../03-retrieval/rag-01-what-is-rag.md' -> resolves to 'modules/03-retrieval/rag-01-what-is-rag.md' which does not exist"),
-    ('rule4', 'modules/08-fine-tuning/ftn-02-fine-tuning-methods.md', "keyword 'LoRA' is not lowercase"),
-    ('rule4', 'modules/08-fine-tuning/ftn-02-fine-tuning-methods.md', "keyword 'QLoRA' is not lowercase"),
-    ('rule4', 'modules/08-fine-tuning/ftn-02-fine-tuning-methods.md', "keyword 'PEFT' is not lowercase"),
-    ('rule7', 'modules/08-fine-tuning/ftn-02-fine-tuning-methods.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('links', 'modules/08-fine-tuning/ftn-02-fine-tuning-methods.md', "broken link target '../01-foundations/fnd-05-scaling-laws.md' -> resolves to 'modules/01-foundations/fnd-05-scaling-laws.md' which does not exist"),
-    ('rule7', 'modules/08-fine-tuning/ftn-03-data-for-fine-tuning.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('rule4', 'modules/08-fine-tuning/ftn-04-fine-tuning-in-practice.md', "keyword 'hosted fine-tuning APIs' is not lowercase"),
-    ('rule4', 'modules/08-fine-tuning/ftn-04-fine-tuning-in-practice.md', "keyword 'fine-tuning CI' is not lowercase"),
-    ('rule7', 'modules/08-fine-tuning/ftn-04-fine-tuning-in-practice.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('rule4', 'modules/08-fine-tuning/ftn-05-preference-optimization.md', "keyword 'DPO' is not lowercase"),
-    ('rule4', 'modules/08-fine-tuning/ftn-05-preference-optimization.md', "keyword 'RLHF versus DPO' is not lowercase"),
-    ('rule4', 'modules/08-fine-tuning/ftn-05-preference-optimization.md', "keyword 'PPO' is not lowercase"),
-    ('rule7', 'modules/08-fine-tuning/ftn-05-preference-optimization.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('rule4', 'modules/08-fine-tuning/ftn-06-distillation-and-slms.md', "keyword 'SLM deployment' is not lowercase"),
-    ('rule7', 'modules/08-fine-tuning/ftn-06-distillation-and-slms.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('links', 'modules/08-fine-tuning/ftn-06-distillation-and-slms.md', "broken link target '../01-foundations/fnd-09-known-limitations.md' -> resolves to 'modules/01-foundations/fnd-09-known-limitations.md' which does not exist"),
-    ('rule4', 'modules/09-frontier/fro-01-voice-realtime.md', "keyword 'realtime API' is not lowercase"),
-    ('rule4', 'modules/09-frontier/fro-01-voice-realtime.md', "keyword 'WebRTC' is not lowercase"),
-    ('rule7', 'modules/09-frontier/fro-01-voice-realtime.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('rule4', 'modules/09-frontier/fro-02-generative-media.md', "keyword 'generative media APIs' is not lowercase"),
-    ('rule7', 'modules/09-frontier/fro-02-generative-media.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('links', 'modules/09-frontier/fro-02-generative-media.md', "broken link target '../01-foundations/fnd-02-tokens-and-embeddings.md' -> resolves to 'modules/01-foundations/fnd-02-tokens-and-embeddings.md' which does not exist"),
-    ('links', 'modules/09-frontier/fro-02-generative-media.md', "broken link target '../01-foundations/fnd-03-attention-and-transformers.md' -> resolves to 'modules/01-foundations/fnd-03-attention-and-transformers.md' which does not exist"),
-    ('links', 'modules/09-frontier/fro-02-generative-media.md', "broken link target '../02-llm-apis/api-02-prompting-fundamentals.md' -> resolves to 'modules/02-llm-apis/api-02-prompting-fundamentals.md' which does not exist"),
-    ('rule4', 'modules/09-frontier/fro-03-edge-on-device.md', "keyword 'mobile LLM' is not lowercase"),
-    ('rule7', 'modules/09-frontier/fro-03-edge-on-device.md', "volatility 'high' is not evergreen/mixed/volatile"),
-    ('links', 'modules/09-frontier/fro-03-edge-on-device.md', "broken link target 'ftn-06-distillation-and-slms.md' -> resolves to 'modules/09-frontier/ftn-06-distillation-and-slms.md' which does not exist"),
-    ('links', 'modules/09-frontier/fro-03-edge-on-device.md', "broken link target 'ftn-02-fine-tuning-methods.md' -> resolves to 'modules/09-frontier/ftn-02-fine-tuning-methods.md' which does not exist"),
-    ('rule4', 'modules/09-frontier/fro-05-interviews-portfolio.md', "keyword 'AI engineering interviews' is not lowercase"),
-    ('rule7', 'modules/09-frontier/fro-05-interviews-portfolio.md', "volatility 'medium' is not evergreen/mixed/volatile"),
-    ('links', 'modules/09-frontier/fro-05-interviews-portfolio.md', "broken link target '../01-foundations/fnd-01-what-is-an-llm.md' -> resolves to 'modules/01-foundations/fnd-01-what-is-an-llm.md' which does not exist"),
-    ('links', 'modules/09-frontier/fro-05-interviews-portfolio.md', "broken link target '../05-evaluation/evl-01-eval-fundamentals.md' -> resolves to 'modules/05-evaluation/evl-01-eval-fundamentals.md' which does not exist"),
-    ('links', 'modules/09-frontier/fro-05-interviews-portfolio.md', "broken link target '../03-retrieval/rag-04-chunking-strategies.md' -> resolves to 'modules/03-retrieval/rag-04-chunking-strategies.md' which does not exist"),
-    ('links', 'modules/09-frontier/fro-05-interviews-portfolio.md', "broken link target '../03-retrieval/rag-06-rag-evaluation.md' -> resolves to 'modules/03-retrieval/rag-06-rag-evaluation.md' which does not exist"),
-    ('rule5', 'engineering/eng-02-agent-loop-architecture.md', "sources[].key 'anthropic-tools' is never referenced inline as [^anthropic-tools]"),
-    ('rule5', 'engineering/eng-03-eval-harness-architecture.md', "sources[].key 'anthropic-evals' is never referenced inline as [^anthropic-evals]"),
-    ('rule5', 'engineering/eng-03-eval-harness-architecture.md', "sources[].key 'openai-evals' is never referenced inline as [^openai-evals]"),
-    ('rule5', 'engineering/eng-04-llmops-stack.md', "sources[].key 'anthropic-caching' is never referenced inline as [^anthropic-caching]"),
-    ('rule5', 'engineering/eng-06-prompt-library.md', "sources[].key 'anthropic-pe' is never referenced inline as [^anthropic-pe]"),
-    ('rule5', 'engineering/eng-06-prompt-library.md', "sources[].key 'openai-pe' is never referenced inline as [^openai-pe]"),
-    ('rule5', 'engineering/eng-07-eval-checklists-debugging.md', "sources[].key 'anthropic-evals' is never referenced inline as [^anthropic-evals]"),
-    ('rule5', 'engineering/eng-07-eval-checklists-debugging.md', "sources[].key 'husain-evals' is never referenced inline as [^husain-evals]"),
-    ('rule5', 'engineering/eng-11-benchmark-templates.md', "sources[].key 'anthropic-models' is never referenced inline as [^anthropic-models]"),
-    ('rule5', 'engineering/eng-12-interview-prep-pack.md', "sources[].key 'fro-05-pointer' is never referenced inline as [^fro-05-pointer]"),
-]
+BASELINE = []  # emptied 2026-10-08: every pre-existing violation was fixed in the content, so CI is now strict
 
 if __name__ == "__main__":
     sys.exit(main())
