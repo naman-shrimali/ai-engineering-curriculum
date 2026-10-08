@@ -65,3 +65,12 @@ export async function runLab(code, tests) {
     worker.postMessage({ type: 'run', id, harness: d.harness, code, tests });
   });
 }
+
+/** chapter id → [{id, title, test_count}] for the chapter's labs, for the mastery model. Empty if labs fail to load. */
+export async function labsByChapter() {
+  try {
+    const d = await labsData(), out = {};
+    for (const l of d.labs) (out[l.chapter] ||= []).push({ id: l.id, title: l.title, test_count: l.test_count });
+    return out;
+  } catch (e) { return {}; }
+}

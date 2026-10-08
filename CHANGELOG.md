@@ -2,6 +2,14 @@
 
 Repo-level change history. CalVer tags per CONVENTIONS §6.
 
+## 2026-10-08 — mastery: a skill map from your own evidence
+
+- **Mastery model** (`app/lib/mastery.js`). Per chapter, two numbers: *mastery* — how well you did on what you demonstrated (self-test and interview grades, estimated flashcard recall, lab results) — and *evidence* — how much you have done relative to what the chapter offers, reading included. Reading counts as exposure and never raises mastery; a chapter that is only read is reported as "Read, not yet tested". Self-grades fade with a 45-day half-life, so old answers prompt a retest rather than inflating the score. Flashcard recall uses an FSRS-style forgetting curve with the card's interval as stability (90% when a card falls due). Below 15% evidence a chapter is "Too early to tell". Chapters with several labs (fnd-08) count each.
+- **Mastery page** (`#/mastery`): a level breakdown, a ranked list of next moves (due cards, questions you marked Couldn't or Partly, unfinished labs, stale self-tests, untested chapters, unread sections — at most two per chapter, each linked to the exact place to act), a skill map of all 61 chapters with an evidence bar under each tile, a per-chapter breakdown, and a "How mastery is computed" panel rendered from the model's actual constants.
+- **Mastery everywhere it helps:** a Mastery lens on the curriculum map and the concept graph (the concept graph restyles in place rather than re-running its layout); a mastery row in each chapter's sidebar; a note at the top of a chapter when one of its prerequisites looks shaky in your practice; the top three next moves on the dashboard.
+- **Fixed:** reading progress could never reach 100%. `graph.sectionProgress` counted Interview questions, Exercises and Revision summary, which the reader never marks as read (rag-05 topped out at 11 of 14). Both now share one definition, `G.DERIVED`.
+- **Tests:** 14 unit tests for the model run with `node --test tests/*.test.mjs`, now a CI job. In-browser, a seeded learner profile produces the designed levels, moves, prerequisite warning and lenses at 1440px and 390px with no console errors.
+
 ## 2026-10-07 — in-browser coding labs
 
 - **Ten coding labs** (`#/labs`, `#/lab/<id>`) where learners implement the mechanisms the chapters teach, in Python, graded in the browser: similarity and normalization (fnd-03), softmax with temperature (fnd-08), top-k / top-p / min-p samplers (fnd-08), IVF search and recall@k (rag-02), retrieval metrics (rag-07), tool-call validation then authorization (api-03), the minimal agent loop (agt-01), a circuit breaker with a fallback chain (prd-04), a routing cascade and cost per successful task (prd-05), and LoRA's forward pass and parameter count (ftn-02). 88 tests in total.

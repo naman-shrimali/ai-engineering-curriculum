@@ -10,9 +10,11 @@ import { mountExplorables } from '../lib/explorables.js';
 import { mountLabCards } from './labs.js';
 import { BASE, CONTENT, go } from '../main.js';
 import { mindmapSmall, mindmapModal } from '../lib/mindmap.js';
+import { assess, shakyPrereqs, LEVEL_INFO } from '../lib/mastery.js';
+import { labsByChapter } from '../lib/labrun.js';
 
 const VOL = { high: 'volatile', medium: 'mixed', low: 'evergreen' };
-const DERIVED = /^(check your understanding|interview questions|flashcards|exercises and mini-project|revision summary|sources|further reading)$/i;
+const DERIVED = G.DERIVED;
 
 async function chapter(el, params, query) {
   const c = G.get(params.id);
@@ -68,14 +70,27 @@ async function chapter(el, params, query) {
     $$('#toc a', el).forEach(a => a.onclick = e => { e.preventDefault(); secs[+a.dataset.i].el.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
     h2s.forEach(hh => { const has = p?.sections?.[hh.id]; let m = hh.querySelector('.sec-done'); if (has && !m) { m = document.createElement('span'); m.className = 'sec-done'; m.textContent = '✓ read'; hh.appendChild(m); } });
   };
+  // mastery: this chapter's evidence, and prerequisites whose own evidence looks weak
+  let LABS = null;
+  labsByChapter().then(x => { LABS = x; if (el.isConnected) drawSide(); });
+  const masteryRow = () => {
+    if (!LABS) return '';
+    const a = assess(c, store.state, LABS[c.id]);
+    return `<a class="side-mx lv-${a.level}" href="#/mastery?c=${c.id}"><i></i><span>Mastery: ${LEVEL_INFO[a.level].label}${a.scored && a.level !== 'early' ? ` · ${Math.round(a.mastery * 100)}%` : ''}</span><span class="dim">evidence ${Math.round(a.evidence * 100)}% →</span></a>`;
+  };
+  const shakyNote = () => {
+    if (!LABS) return '';
+    const weak = shakyPrereqs(c, CONTENT.chapters, store.state, LABS);
+    return weak.length ? `<div class="prq-shaky">${weak.length > 1 ? 'Two foundations look' : 'A foundation looks'} shaky in your practice: ${weak.map(a => `<a href="#/mastery?c=${a.id}" style="--mc:${modVar(G.get(a.id)?.module)}">${a.id} · ${LEVEL_INFO[a.level].label.toLowerCase()} ${Math.round(a.mastery * 100)}%</a>`).join(', ')}. A quick review first will make this chapter easier.</div>` : '';
+  };
   const drawSide = () => {
     const p = store.prog(c.id); const read = tracked.filter(s => p?.sections?.[s.anchor]).length;
     const checks = Object.keys(p?.checks || {}).length, iv = Object.keys(p?.interview || {}).length, ex = Object.keys(p?.exercises || {}).length;
     $('#side-prog', el).innerHTML = `<div class="row spread"><span>Sections read</span><b class="num">${read}/${tracked.length}</b></div><div class="bar"><i style="width:${tracked.length ? 100 * read / tracked.length : 0}%"></i></div>
       <div class="row spread" style="margin-top:4px"><span>Self-test graded</span><b class="num">${checks}/${(c.check || []).length}</b></div>
       <div class="row spread"><span>Interview graded</span><b class="num">${iv}/${(c.interview || []).length}</b></div>
-      <div class="row spread"><span>Exercises done</span><b class="num">${ex}/${(c.exercises || []).length}</b></div>`;
-    $('#chap-head', el).innerHTML = header(); wireHeader();
+      <div class="row spread"><span>Exercises done</span><b class="num">${ex}/${(c.exercises || []).length}</b></div>${masteryRow()}`;
+    $('#chap-head', el).innerHTML = header() + shakyNote(); wireHeader();
     $('#mm', el).innerHTML = ''; mindmapSmall($('#mm', el), c, secs, store.prog(c.id), a => art.querySelector('#' + CSS.escape(a))?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   };
   const wireHeader = () => {

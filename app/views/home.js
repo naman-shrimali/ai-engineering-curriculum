@@ -3,6 +3,9 @@ import * as store from '../lib/store.js';
 import * as G from '../lib/graph.js';
 import { isDue } from '../lib/srs.js';
 import { CONTENT, go } from '../main.js';
+import { plan } from '../lib/mastery.js';
+import { labsByChapter } from '../lib/labrun.js';
+import { movesHtml } from './mastery.js';
 
 function dueCards() {
   let n = 0; const at = Date.now();
@@ -61,6 +64,8 @@ async function home(el) {
         </div>
       </section>
 
+      <section class="sect" id="home-moves" hidden></section>
+
       <section class="sect">
         <div class="row spread"><h2>Up next</h2><span class="dim" style="font-size:13px">${track ? `${esc(track.name)} · ${trackDone}/${track.ids.length} done` : 'Choose a track below to focus this list'}</span></div>
         <div class="nextlist">${next.length ? next.map(c => chapCard(c)).join('') : '<div class="empty">Nothing unlocked on this track — pick another, or explore the map.</div>'}</div>
@@ -96,7 +101,17 @@ async function home(el) {
     $$('[data-track]', el).forEach(b => b.onclick = () => { store.setTrack(b.dataset.track === store.state.track ? null : b.dataset.track); });
   };
   draw();
-  return store.subscribe(draw);
+  // next moves from the mastery model, once the lab index is in (re-filled after every redraw)
+  let LABS = null;
+  const fill = () => {
+    const box = el.querySelector('#home-moves'); if (!box || !LABS) return;
+    const moves = plan(CONTENT.chapters.filter(c => c.exists), store.state, LABS, Date.now(), { limit: 3 });
+    if (!moves.length) return;
+    box.hidden = false;
+    box.innerHTML = `<div class="row spread"><h2>Your next moves</h2><a class="dim" style="font-size:13px" href="#/mastery">See your mastery →</a></div><div class="moves compact">${movesHtml(moves, { compact: true })}</div>`;
+  };
+  labsByChapter().then(l => { LABS = l; fill(); });
+  return store.subscribe(() => { draw(); fill(); });
 }
 
 export default { home };

@@ -5,13 +5,20 @@ import { $, $$, esc, h, modVar, fmtMins } from '../lib/ui.js';
 import * as store from '../lib/store.js';
 import * as G from '../lib/graph.js';
 import { CONTENT, go } from '../main.js';
+import { assess, LEVEL_INFO } from '../lib/mastery.js';
+import { labsByChapter } from '../lib/labrun.js';
 
-async function concepts(el) {
-  const K = CONTENT.concepts; let group = 'all';
+async function concepts(el, params, query) {
+  const K = CONTENT.concepts; let group = 'all', lens = query?.lens === 'mastery' ? 'mastery' : 'module';
+  const labs = await labsByChapter();
+  const LV = new Map(CONTENT.chapters.map(c => [c.id, assess(c, store.state, labs[c.id])]));
+  const MODULE_LEGEND = CONTENT.modules.filter(m => m.n < 10).map(m => `<span><i style="border-color:${modVar(m.key)};background:${modVar(m.key)}"></i>${esc(m.short)}</span>`).join('');
+  const MASTERY_LEGEND = `${['strong', 'solid', 'shaky', 'weak', 'early', 'read', 'none'].map(k => `<span><i class="lv lv-${k}"></i>${LEVEL_INFO[k].label.toLowerCase()}</span>`).join('')}`;
   el.innerHTML = h`<div class="mapwrap" id="cwrap">
-    <div class="map-ui"><div class="head"><h1>Concept graph</h1><p class="sub">Which idea underwrites which. Arrows read "you need this to understand that". Colour is the module where the concept is developed; filled nodes are hubs.</p></div>
-      <div class="row"><div class="seg" id="cg"><button type="button" data-g="all" class="on">All</button>${K.groups.map(g => `<button type="button" data-g="${g.id}">${esc(g.label.replace(/^The /, ''))}</button>`).join('')}</div></div>
-      <div class="legend">${CONTENT.modules.filter(m => m.n < 10).map(m => `<span><i style="border-color:${modVar(m.key)};background:${modVar(m.key)}"></i>${esc(m.short)}</span>`).join('')}</div></div>
+    <div class="map-ui"><div class="head"><h1>Concept graph</h1><p class="sub">Which idea underwrites which. Arrows read "you need this to understand that". Colour is the module where the concept is developed — or, with <b>Your mastery</b>, what your practice says about that chapter. Larger nodes are hubs.</p></div>
+      <div class="row"><div class="seg" id="cg"><button type="button" data-g="all" class="on">All</button>${K.groups.map(g => `<button type="button" data-g="${g.id}">${esc(g.label.replace(/^The /, ''))}</button>`).join('')}</div>
+        <div class="seg" id="clens"><button type="button" data-l="module" class="${lens === 'module' ? 'on' : ''}">Module</button><button type="button" data-l="mastery" class="${lens === 'mastery' ? 'on' : ''}">Your mastery</button></div></div>
+      <div class="legend" id="clegend">${lens === 'mastery' ? MASTERY_LEGEND : MODULE_LEGEND}</div></div>
     <div class="map-ctrl"><button type="button" id="z-in">+</button><button type="button" id="z-out">−</button><button type="button" id="z-fit">⤢</button></div>
     <div class="map-side" id="cside"></div>
     <svg id="csvg" role="img" aria-label="Concept graph"></svg></div>`;
@@ -30,7 +37,7 @@ async function concepts(el) {
     sim = d3.forceSimulation(nodes).force('link', d3.forceLink(links).id(d => d.id).distance(l => 80 + 10 * Math.min(6, (deg.get(l.source.id) || 1)))).force('charge', d3.forceManyBody().strength(-420))
       .force('center', d3.forceCenter(W / 2, H / 2)).force('collide', d3.forceCollide(40)).force('x', d3.forceX(W / 2).strength(.04)).force('y', d3.forceY(H / 2).strength(.06));
     const link = g.append('g').selectAll('path').data(links).join('path').attr('class', 'concept-edge');
-    const node = g.append('g').selectAll('g').data(nodes).join('g').attr('class', d => 'concept-node' + ((deg.get(d.id) || 0) >= 4 ? ' hub' : '')).style('--mc', d => modVar(G.get(d.chapter)?.module)).style('cursor', 'pointer');
+    const node = g.append('g').selectAll('g').data(nodes).join('g').attr('class', d => 'concept-node' + ((deg.get(d.id) || 0) >= 4 ? ' hub' : '') + (lens === 'mastery' ? ' mx lv-' + (LV.get(d.chapter)?.level || 'none') : '')).style('--mc', d => modVar(G.get(d.chapter)?.module)).style('cursor', 'pointer');
     node.append('circle').attr('r', d => 8 + Math.min(8, (deg.get(d.id) || 0) * 1.6));
     node.append('text').attr('dy', d => 22 + Math.min(8, (deg.get(d.id) || 0) * 1.6)).attr('text-anchor', 'middle').text(d => d.label);
     node.append('text').attr('dy', d => 34 + Math.min(8, (deg.get(d.id) || 0) * 1.6)).attr('text-anchor', 'middle').style('font', '500 9.5px var(--mono)').style('fill', 'var(--fg-3)').text(d => d.chapter || '');
@@ -53,6 +60,12 @@ async function concepts(el) {
     box.querySelector('.close').onclick = () => side(null);
   }
   draw();
+  // restyle in place: re-running the force layout would reshuffle the graph
+  const recolor = () => g.selectAll('.concept-node').each(function (d) {
+    this.classList.remove(...[...this.classList].filter(k => k === 'mx' || k.startsWith('lv-')));
+    if (lens === 'mastery') this.classList.add('mx', 'lv-' + (LV.get(d.chapter)?.level || 'none'));
+  });
+  $$('#clens button', el).forEach(b => b.onclick = () => { lens = b.dataset.l; $$('#clens button', el).forEach(x => x.classList.toggle('on', x === b)); $('#clegend', el).innerHTML = lens === 'mastery' ? MASTERY_LEGEND : MODULE_LEGEND; history.replaceState(null, '', '#/concepts' + (lens === 'mastery' ? '?lens=mastery' : '')); recolor(); });
   $$('#cg button', el).forEach(b => b.onclick = () => { group = b.dataset.g; $$('#cg button', el).forEach(x => x.classList.toggle('on', x === b)); draw(); svg.transition().call(zoom.transform, d3.zoomIdentity); });
   $('#z-in', el).onclick = () => svg.transition().call(zoom.scaleBy, 1.3);
   $('#z-out', el).onclick = () => svg.transition().call(zoom.scaleBy, .75);

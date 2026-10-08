@@ -46,3 +46,18 @@ jobs:
 
       - name: Check labs (reference solutions pass, starters fail, quotes verbatim, labs.json fresh)
         run: python3 scripts/build-labs.py --check
+
+  unit-tests:
+    name: Unit tests (mastery model)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run node:test suites
+        run: node --test tests/*.test.mjs

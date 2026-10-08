@@ -39,11 +39,16 @@ export function nodeState(id) {
 }
 export function unmetPrereqs(id) { return (get(id)?.prereqs || []).filter(p => !isDone(p)); }
 
-/** Fraction of a chapter's H2 sections marked read. */
+/** Sections the reader turns into practice tools (or reference lists) rather than reading. */
+export const DERIVED = /^(check your understanding|interview questions|flashcards|exercises and mini-project|revision summary|sources|further reading)$/i;
+/** The sections the chapter reader tracks as read. */
+export const readable = c => (c?.sections || []).filter(s => !DERIVED.test(s.h));
+
+/** Fraction of a chapter's readable H2 sections marked read. */
 export function sectionProgress(id) {
   const c = get(id); const p = prog(id);
   if (!c?.sections?.length) return 0;
-  const tracked = c.sections.filter(s => !/^(sources|check your understanding|flashcards|further reading)$/i.test(s.h));
+  const tracked = readable(c);
   const n = tracked.filter(s => p?.sections?.[s.anchor]).length;
   return tracked.length ? n / tracked.length : 0;
 }

@@ -5,6 +5,8 @@ import { $, $$, esc, h, ico, fmtMins, modVar, toast } from '../lib/ui.js';
 import * as store from '../lib/store.js';
 import * as G from '../lib/graph.js';
 import { CONTENT, go } from '../main.js';
+import { assess, LEVEL_INFO } from '../lib/mastery.js';
+import { labsByChapter } from '../lib/labrun.js';
 
 const NW = 168, NH = 48, GAP = 12, LANE = 206, TOP = 44, PAD = 30;
 
@@ -39,11 +41,17 @@ function edgePath(e) {
 }
 
 async function map(el, params, query) {
-  let mode = 'modules', focus = null;
+  let mode = 'modules', focus = null, lens = query.lens === 'mastery' ? 'mastery' : 'progress', LV = new Map();
+  const labs = await labsByChapter();
+  const levels = () => { LV = new Map([...CONTENT.chapters, ...CONTENT.engineering].map(c => [c.id, assess(c, store.state, labs[c.id])])); };
+  levels();
+  const PROGRESS_LEGEND = `<span><i class="done"></i>done</span><span><i class="reading"></i>in progress</span><span><i class="avail"></i>available</span><span><i class="locked"></i>needs prerequisites</span>`;
+  const MASTERY_LEGEND = `${['strong', 'solid', 'shaky', 'weak', 'early', 'read', 'none'].map(k => `<span><i class="lv lv-${k}"></i>${LEVEL_INFO[k].label.toLowerCase()}</span>`).join('')}`;
   el.innerHTML = h`<div class="mapwrap" id="mapwrap">
     <div class="map-ui"><div class="head"><h1>Curriculum map</h1><p class="sub">Every chapter and what it needs first. Hover to trace a chain, click for detail. Completed chapters unlock what depends on them.</p></div>
       <div class="row"><div class="seg" id="mode"><button type="button" data-m="modules" class="on">By module</button><button type="button" data-m="depth">By depth</button></div>
-      <div class="legend"><span><i class="done"></i>done</span><span><i class="reading"></i>in progress</span><span><i class="avail"></i>available</span><span><i class="locked"></i>needs prerequisites</span></div></div></div>
+        <div class="seg" id="lens"><button type="button" data-l="progress" class="${lens === 'progress' ? 'on' : ''}">Progress</button><button type="button" data-l="mastery" class="${lens === 'mastery' ? 'on' : ''}">Mastery</button></div>
+      <div class="legend" id="mlegend">${lens === 'mastery' ? MASTERY_LEGEND : PROGRESS_LEGEND}</div></div></div>
     <div class="map-ctrl"><button type="button" id="z-in" title="Zoom in">+</button><button type="button" id="z-out" title="Zoom out">−</button><button type="button" id="z-fit" title="Fit">⤢</button></div>
     <div class="map-side" id="mside"></div>
     <svg id="mapsvg" role="img" aria-label="Curriculum prerequisite map"></svg></div>`;
@@ -68,11 +76,11 @@ async function map(el, params, query) {
     lane.append('rect').attr('x', (d, i) => PAD + i * LANE - 14).attr('y', TOP - 40).attr('width', NW + 28).attr('height', d => d.ids.length * (NH + GAP) + 44);
     lane.append('text').attr('x', (d, i) => PAD + i * LANE).attr('y', TOP - 18).text(d => d.label);
     const edges = g.append('g').selectAll('path').data(L.edges).join('path').attr('class', 'mapedge').attr('d', edgePath).attr('marker-end', 'url(#arr)');
-    const node = g.append('g').selectAll('g').data(L.nodes).join('g').attr('class', d => 'mapnode ' + G.nodeState(d.id)).style('--mc', d => modVar(d.module))
+    const node = g.append('g').selectAll('g').data(L.nodes).join('g').attr('class', d => 'mapnode ' + (lens === 'mastery' ? 'mx lv-' + LV.get(d.id).level : G.nodeState(d.id))).style('--mc', d => modVar(d.module))
       .attr('transform', d => `translate(${d.x},${d.y})`).attr('tabindex', 0).attr('role', 'button');
     node.append('rect').attr('width', NW).attr('height', NH);
     node.append('text').attr('class', 'cid').attr('x', 10).attr('y', 17).text(d => d.id);
-    node.append('text').attr('class', 'mins').attr('x', NW - 10).attr('y', 17).attr('text-anchor', 'end').text(d => G.nodeState(d.id) === 'done' ? '✓' : fmtMins(d.est_minutes));
+    node.append('text').attr('class', 'mins').attr('x', NW - 10).attr('y', 17).attr('text-anchor', 'end').text(d => { if (lens === 'mastery') { const a = LV.get(d.id); return a.scored && a.level !== 'early' ? Math.round(a.mastery * 100) + '%' : a.level === 'read' ? 'read' : ''; } return G.nodeState(d.id) === 'done' ? '✓' : fmtMins(d.est_minutes); });
     node.append('text').attr('x', 10).attr('y', 36).text(d => d.title.length > 26 ? d.title.slice(0, 25) + '…' : d.title);
     node.append('title').text(d => `${d.id} — ${d.title}`);
     const hl = (id, sticky) => {
@@ -105,11 +113,12 @@ async function map(el, params, query) {
     $$('[data-focus]', box).forEach(a => a.onclick = e => { e.preventDefault(); focus = a.dataset.focus; draw(); side(L.byId.get(focus)); });
   }
   draw(); requestAnimationFrame(fit);
+  $$('#lens button', el).forEach(b => b.onclick = () => { lens = b.dataset.l; $$('#lens button', el).forEach(x => x.classList.toggle('on', x === b)); $('#mlegend', el).innerHTML = lens === 'mastery' ? MASTERY_LEGEND : PROGRESS_LEGEND; history.replaceState(null, '', '#/map' + (lens === 'mastery' ? '?lens=mastery' : '')); draw(); });
   $$('#mode button', el).forEach(b => b.onclick = () => { mode = b.dataset.m; $$('#mode button', el).forEach(x => x.classList.toggle('on', x === b)); draw(); fit(); });
   $('#z-in', el).onclick = () => svg.transition().call(zoom.scaleBy, 1.3);
   $('#z-out', el).onclick = () => svg.transition().call(zoom.scaleBy, .75);
   $('#z-fit', el).onclick = fit;
-  const unsub = store.subscribe(() => draw());
+  const unsub = store.subscribe(() => { levels(); draw(); });
   const ro = new ResizeObserver(() => { /* keep transform; user can refit */ }); ro.observe(wrap);
   return () => { unsub(); ro.disconnect(); };
 }
