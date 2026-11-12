@@ -14,6 +14,9 @@ If you are a researcher, this repo is not for you. The center of gravity is the 
 
 ```
 README.md               ← you are here
+index.html, app/        ← the interactive learning app (renders the Markdown live; no build step)
+scripts/                ← build-content.py (content index), validate.py (schema checks), vendor.sh
+docs/                   ← SETUP-GCP-AUTH.md: enabling sign-in + progress sync on Google Cloud
 CONVENTIONS.md          ← authoring rules: structure, naming, citations, versioning
 METADATA_SCHEMA.md      ← YAML frontmatter spec (designed for RAG ingestion)
 manifest.yaml           ← machine-readable build spec: every chapter, in build order
@@ -32,7 +35,7 @@ modules/
   09-frontier/          ← voice, media, edge, career
 engineering/            ← practitioner reference: architectures, patterns, playbooks (eng-*)
 blueprints/             ← generation specs for unwritten chapters (build artifact, not content)
-tutor/                  ← query layer: index, glossary, knowledge graph, RAG config, prompts, local tool
+tutor/                  ← query layer: index, glossary, knowledge graph, RAG config, prompts, classic reader
 glossary.md             ← single shared glossary (see CONVENTIONS.md)
 CHANGELOG.md            ← repo-level change history
 REVIEW.md               ← current prioritized punch list of fixes
@@ -42,24 +45,44 @@ REVIEW.md               ← current prioritized punch list of fixes
 
 Every content file is one **chapter** with a stable ID (e.g. `rag-05`), YAML frontmatter per [METADATA_SCHEMA.md](METADATA_SCHEMA.md), and self-contained sections designed for both human reading and RAG ingestion.
 
-## Reading it without juggling files
+## The interactive app
+
+The repository *is* the app. `index.html` at the root (served by GitHub Pages) is an interactive learning platform that renders these same Markdown files live — nothing is duplicated or paraphrased, so the `.md` files stay the single source of truth and every chapter, diagram, flashcard and question you see on the site is a verbatim slice of a file in this repo.
+
+What it adds on top of reading:
+
+- **Curriculum map** — every chapter as a node, prerequisites as edges, laid out by module or by prerequisite depth. Hover to trace a chain, click for detail; completed chapters unlock what depends on them.
+- **Concept graph** — the force-directed knowledge graph from [tutor/knowledge-graph.md](tutor/knowledge-graph.md): which idea underwrites which.
+- **Chapter reader** — reading-progress bar, sections that mark themselves read, interactive Mermaid diagrams (pan, zoom, fullscreen, chapter-ID nodes are links), glossary hover cards, a mind map built from the chapter's own headings, and the derived sections turned into tools: *Check your understanding* becomes a self-graded quiz, *Interview questions* an attempt-then-reveal drill, *Flashcards* flip cards, *Exercises* a checklist.
+- **Spaced repetition** — all 576 chapter flashcards in one SM-2 scheduler, filterable by module or chapter.
+- **Practice** — self-tests, interview drills and misconception checks per chapter, or a mixed drill across everything you have started.
+- **Dashboard** — track choice (fast / full / systems / product), what to read next computed from the prerequisite DAG, streaks and an activity heatmap.
+- **Accounts and sync** — optional sign-in (Google, GitHub, email) backed by Firebase Authentication and Cloud Firestore on Google Cloud, so progress follows you across devices. Without it the app runs in local-only mode with progress in the browser; see [docs/SETUP-GCP-AUTH.md](docs/SETUP-GCP-AUTH.md) to enable it on your own deployment.
+- **Search** — `⌘K` over chapters, sections and glossary terms. Reading list with a personal Read Later queue.
+
+Run it locally:
 
 ```bash
-./read.sh
+./read.sh          # serves the repo root on :8123 and opens the app
 ```
 
-Opens a local reader UI (`tutor/reader.html`) with a grouped sidebar, full-text search across every file, working cross-links, rendered Mermaid diagrams, and a per-page table of contents. It renders the same `.md` files you see in the repo — nothing is duplicated, so the Markdown stays the single source of truth. Needs a local server (browsers block `file://` fetches); `read.sh` starts one on `:8123` and opens the page.
+Browsers block `file://` fetches, so it needs the local server. The classic single-file reader is still available at `tutor/reader.html`.
 
-The same reader is published at [https://naman-shrimali.github.io/ai-engineering-curriculum/](https://naman-shrimali.github.io/ai-engineering-curriculum/); see [DEPLOY.md](DEPLOY.md) to redeploy.
+### How it stays accurate
+
+`scripts/build-content.py` compiles `app/data/content.json` — the *structure* of the corpus (frontmatter, section outline, flashcards, questions, diagram sources, glossary, concept graph, tracks) — by parsing the Markdown; every string in it is copied, never rewritten. CI (`.github/workflows/ci.yml`) fails if that index is stale or if any chapter violates [METADATA_SCHEMA.md](METADATA_SCHEMA.md) (`scripts/validate.py`). After editing content:
+
+```bash
+python3 scripts/build-content.py   # refresh the index (read.sh does this too)
+python3 scripts/validate.py        # frontmatter, prerequisite DAG, footnotes, links
+```
 
 ### Reading queue
 
 Two places to park things you want to read:
 
-- **[reading-list.md](reading-list.md)** — curated primary sources (mostly papers), grouped by the chapter each one reinforces. Version-controlled, so it's shared and reviewable. In the reader, every link has a **+** to push it into your queue.
-- **Read Later** — your personal queue, in the reader's sidebar. Paste any URL, mark things read, filter and search. It's stored in your browser's localStorage (no backend on a static host), so it's per-device — use **Export/Import** to move it, and promote anything durable into `reading-list.md`.
-
-To capture links from elsewhere, drag the bookmarklet on the Read Later page to your bookmarks bar; clicking it on any article files that page into the queue with its title.
+- **[reading-list.md](reading-list.md)** — curated primary sources (mostly papers), grouped by the chapter each one reinforces. Version-controlled, so it's shared and reviewable. In the app, every link has a **+** to push it into your queue.
+- **Read Later** — your personal queue on the Reading list page. Paste any URL, mark things read, filter. It lives in your browser (and in your cloud profile when signed in); export/import from the profile page.
 
 ## How to navigate
 

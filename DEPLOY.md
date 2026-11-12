@@ -9,11 +9,16 @@ Day-to-day you don't need any of this; just `./read.sh` locally, or open the liv
 ## Updating the live site
 
 ```bash
-python3 tutor/build-index.py     # refresh written/pending state
+python3 scripts/build-content.py   # refresh app/data/content.json + tutor/files.json
+python3 scripts/validate.py        # optional: same checks CI runs
 git add -A && git commit -m "..." && git push
 ```
 
-Pages rebuilds within a minute or two.
+Pages rebuilds within a minute or two. There is no build step for the app itself: `index.html` + `app/` are plain ES modules and the runtime libraries are vendored in `app/vendor/` (rebuild with `scripts/vendor.sh` only when bumping versions).
+
+### Enabling sign-in and cloud progress (optional)
+
+The app runs in local-only mode until `app/config.js` carries a Firebase web config. Follow [docs/SETUP-GCP-AUTH.md](docs/SETUP-GCP-AUTH.md): create the Firebase (Google Cloud) project, enable the auth providers, add `naman-shrimali.github.io` and `localhost` as authorized domains, create Firestore, deploy `firestore.rules`, paste the config, push.
 
 ## First-time setup (for a fork or a fresh account)
 
@@ -47,19 +52,20 @@ gh api -X POST repos/:owner/ai-engineering-curriculum/pages \
 | File | Purpose |
 |---|---|
 | `.nojekyll` | **Critical.** Without it Pages runs Jekyll, which converts `.md` files carrying YAML frontmatter into HTML — every chapter fetch would 404. |
-| `index.html` | Redirects the Pages root URL to `tutor/reader.html`. |
-| `tutor/files.json` | Prebuilt file index: one request instead of ~100 HEAD probes. Regenerate with `python3 tutor/build-index.py` (also run automatically by `read.sh`). |
+| `index.html` | The interactive app (the classic reader remains at `tutor/reader.html`). |
+| `app/data/content.json` | Prebuilt content index the app boots from (structure only; chapters are fetched live). Regenerate with `python3 scripts/build-content.py` (also run by `read.sh`); CI fails when it is stale. |
+| `tutor/files.json` | File index for the classic reader; written by the same script. |
 
 The reader resolves paths relative to the repo root (`new URL('../', location.href)`), so it works both at a subpath (`user.github.io/repo/`) and at a domain root. Verified against a simulated subpath deploy: 0 failed requests.
 
 ## After adding or editing chapters
 
 ```bash
-python3 tutor/build-index.py    # refresh written/pending state
+python3 scripts/build-content.py   # refresh the content index
 git add -A && git commit -m "..." && git push
 ```
 
-Pages redeploys automatically within a minute. Skipping the index rebuild only means newly added chapters still show as "pending" in the sidebar — content itself stays correct.
+Pages redeploys automatically within a minute. CI rejects a push whose index is stale, so the app's flashcards, questions and map never drift from the Markdown.
 
 ## Local use is unchanged
 
