@@ -142,27 +142,32 @@ function glossaryHover(root) {
   if (!CONTENT) return;
   const terms = CONTENT.glossary;
   if (!terms.length) return;
-  const rx = new RegExp('\\b(' + terms.map(t => t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((a, b) => b.length - a.length).join('|') + ')s?\\b', 'i');
+  const pattern = '\\b(' + terms.map(t => t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((a, b) => b.length - a.length).join('|') + ')s?\\b';
+  const rx = new RegExp(pattern, 'gi');
   const byTerm = new Map(terms.map(t => [t.term.toLowerCase(), t]));
-  // one link per term per H2 section, prose paragraphs only
-  let seen = new Set();
+  // Link every glossary occurrence so each paragraph can provide its own
+  // exploration origin, including repeated terms within the same section.
   for (const el of $$('h2, p, li', root)) {
-    if (el.tagName === 'H2') { seen = new Set(); continue; }
+    if (el.tagName === 'H2') continue;
     if (el.closest('blockquote, pre, table, .footnotes, a')) continue;
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     const nodes = []; let t; while ((t = walker.nextNode())) nodes.push(t);
     for (const tn of nodes) {
       if (tn.parentElement.closest('a, code, strong, em, sup')) continue;
-      const m = tn.textContent.match(rx); if (!m) continue;
-      const key = m[1].toLowerCase(); if (seen.has(key)) continue;
-      const term = byTerm.get(key); if (!term) continue;
-      seen.add(key);
-      const i = m.index, span = document.createElement('a');
-      span.className = 'glos'; span.href = '#/glossary#' + term.anchor; span.textContent = m[0]; span.dataset.term = term.term;
-      const after = tn.splitText(i); after.textContent = after.textContent.slice(m[0].length);
-      tn.parentNode.insertBefore(span, after);
-      span.addEventListener('mouseenter', () => showPop(span, term)); span.addEventListener('mouseleave', hidePop);
-      span.addEventListener('focus', () => showPop(span, term)); span.addEventListener('blur', hidePop);
+      const text = tn.textContent, matches = [...text.matchAll(rx)]; if (!matches.length) continue;
+      const frag = document.createDocumentFragment(); let last = 0, linked = false;
+      for (const m of matches) {
+        const term = byTerm.get(m[1].toLowerCase()); if (!term) continue;
+        if (m.index > last) frag.append(text.slice(last, m.index));
+        const span = document.createElement('a');
+        span.className = 'glos'; span.href = '#/glossary#' + term.anchor; span.textContent = m[0]; span.dataset.term = term.term;
+        span.addEventListener('mouseenter', () => showPop(span, term)); span.addEventListener('mouseleave', hidePop);
+        span.addEventListener('focus', () => showPop(span, term)); span.addEventListener('blur', hidePop);
+        frag.append(span); last = m.index + m[0].length; linked = true;
+      }
+      if (!linked) continue;
+      if (last < text.length) frag.append(text.slice(last));
+      tn.replaceWith(frag);
     }
   }
 }
