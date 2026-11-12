@@ -95,6 +95,7 @@ export function render(md, docPath) {
 
 /* ---------------- post-render decoration ---------------- */
 export function decorate(root, { onNavigate } = {}) {
+  addExploreAnchors(root);
   // captions: italic-only paragraph directly before a diagram/table/pre
   $$('p > em:only-child', root).forEach(em => {
     const p = em.parentElement, nx = p.nextElementSibling;
@@ -110,10 +111,29 @@ export function decorate(root, { onNavigate } = {}) {
   });
   // module colour on cross-refs
   $$('a.xref[data-mod]', root).forEach(a => a.style.setProperty('--mc', `var(--m-${a.dataset.mod})`));
+  // Prose references open in a new browser tab. Glossary words stay in the
+  // current tab so their originating paragraph can be traced.
+  $$('a.xref, a.in', root).forEach(a => {
+    if (/^#\/(c|doc|glossary)(\/|\?|#|$)/.test(a.getAttribute('href') || '')) {
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+    }
+  });
   // glossary hover cards
   glossaryHover(root);
   // diagrams
   renderDiagrams(root, onNavigate);
+}
+
+/* Stable, DOM-local anchors let a transported exploration path return to the
+   same paragraph even after the source is opened in a fresh browser tab. */
+function addExploreAnchors(root) {
+  let n = 0;
+  $$('p, li, blockquote', root).forEach(el => {
+    if (el.id || !el.textContent.trim()) return;
+    let h = 2166136261;
+    for (const ch of el.textContent.trim().slice(0, 240)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    el.id = `explore-origin-${(h >>> 0).toString(36)}-${n++}`;
+  });
 }
 
 /* ---------------- glossary popovers ---------------- */

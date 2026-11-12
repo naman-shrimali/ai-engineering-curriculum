@@ -3,6 +3,7 @@ import { $, $$, esc, h, ico, toast, modVar, fmtMins, highlight } from './lib/ui.
 import * as store from './lib/store.js';
 import * as G from './lib/graph.js';
 import * as MD from './lib/md.js';
+import * as explore from './lib/explore.js';
 import { isDue } from './lib/srs.js';
 
 export const BASE = new URL('./', location.href).href;   // repo root (works at a subpath)
@@ -26,6 +27,7 @@ async function boot() {
     return;
   }
   G.init(CONTENT); MD.init(CONTENT);
+  explore.init();
   const mods = await Promise.all([
     import('./views/home.js'), import('./views/map.js'), import('./views/concepts.js'), import('./views/chapters.js'),
     import('./views/chapter.js'), import('./views/cards.js'), import('./views/practice.js'), import('./views/glossary.js'),
@@ -62,6 +64,7 @@ export function parseHash() {
 
 async function route() {
   const r = parseHash();
+  explore.onRoute(location.hash);
   const view = views[r.name] || views.home;
   if (current.teardown) { try { current.teardown(); } catch (e) { /* */ } }
   current = { name: r.name, teardown: null };
@@ -166,7 +169,7 @@ export function openPalette(prefill = '') {
     $$('.it', list).forEach(el => { el.onmouseenter = () => { sel = +el.dataset.i; $$('.it', list).forEach(e => e.classList.toggle('on', +e.dataset.i === sel)); }; el.onclick = () => choose(); });
   };
   const close = () => { pal.hidden = true; pal.innerHTML = ''; };
-  const choose = () => { const x = items[sel]; if (x) { close(); go(x.href); } };
+  const choose = () => { const x = items[sel]; if (x) { if (x.kind === 'term') explore.recordSameTab(x.href, x.title); close(); go(x.href); } };
   input.oninput = () => { sel = 0; draw(); };
   input.onkeydown = e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); draw(); $('.it.on', list)?.scrollIntoView({ block: 'nearest' }); }
